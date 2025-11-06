@@ -1,7 +1,7 @@
 'use client'
 import Botbar from '@/components/footer/Botbar'
 import { NavbarHead } from '@/components/header/NavbarHead'
-import '../../app/i18n'
+import '@/app/i18n'
 import { useTranslation } from 'react-i18next';
 
 const AboutUs = ({ params }) => {

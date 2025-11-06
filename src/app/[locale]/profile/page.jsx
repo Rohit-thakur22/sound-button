@@ -1,5 +1,5 @@
 import ProfilePage from '@/components/pages/ProfilePage'
-import { topCreators } from '../../database/topCreators'
+import { topCreators } from '@/database/topCreators'
 
 const Profile = async ({ searchParams, params }) => {
   const { locale } = params;
