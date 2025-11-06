@@ -13,11 +13,11 @@ export function useBanUser() {
     onSuccess: () => {
       // Invalidate users queries to refetch updated data
       queryClient.invalidateQueries({ queryKey: ["dashboard-users"] });
-      toast.success("User banned successfully");
+      toast.success("User updated successfully");
     },
     onError: (error) => {
-      console.error("Error banning user:", error);
-      toast.error("Failed to ban user");
+      console.error("Error updating user:", error);
+      toast.error("Failed to update user");
     },
   });
 }
@@ -33,11 +33,11 @@ export function useUnbanUser() {
     onSuccess: () => {
       // Invalidate users queries to refetch updated data
       queryClient.invalidateQueries({ queryKey: ["dashboard-users"] });
-      toast.success("Ban revoked successfully");
+      toast.success("User updated successfully");
     },
     onError: (error) => {
-      console.error("Error revoking ban:", error);
-      toast.error("Failed to revoke ban");
+      console.error("Error updating user:", error);
+      toast.error("Failed to update user");
     },
   });
 }

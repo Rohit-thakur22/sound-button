@@ -1,33 +1,32 @@
 'use client'
 import logo from '../../assets/images/logo.png'
 import React, { useState, useEffect } from 'react';
-import { onAuthStateChanged, signInWithPopup } from 'firebase/auth';
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Navbar, MegaMenu } from "flowbite-react";
 import Link from "next/link";
 import Image from 'next/image';
 import { useTranslation } from "react-i18next";
-import { auth, googleProvider } from '../../../firebase';
-import { getAuth, } from 'firebase/auth';
-import { createUser } from '../../database/createUser';
 
 const LoginPage = ({ uploadCheck, locale = 'en' }) => {
     const router = useRouter()
+    const searchParams = useSearchParams()
     const { t } = useTranslation()
     const [loading, setLoading] = useState(false)
 
-    const signInWithGoogle = async () => {
+    const signInWithGoogle = () => {
         try {
-            const result = await signInWithPopup(auth, googleProvider);
-            const userName = result.user.displayName;
-            const userImage = result.user.photoURL;
-            setLoading(true)
-            await createUser(result.user)
+            // Get the API base URL from environment or use default
+            const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://sound-effect-buttons.onrender.com';
+            // Construct the redirect URI to come back to this page
+            const redirectUri = typeof window !== 'undefined'
+                ? `${window.location.origin}/${locale}/login${uploadCheck ? '?upload=true' : ''}`
+                : '';
 
-            localStorage.setItem('userName', userName);
-            localStorage.setItem('userImage', userImage);
+            // Build the auth URL with redirect_uri parameter
+            const authUrl = `${apiBaseUrl}/auth/google${redirectUri ? `?redirect_uri=${encodeURIComponent(redirectUri)}` : ''}`;
 
-            router.push(uploadCheck ? `/${locale}/profile?upload=true` : `/${locale}`);
+            // Redirect to the API endpoint which will handle OAuth
+            window.location.href = authUrl;
         } catch (error) {
             console.error('Error signing in with Google:', error);
             alert('Sign-in failed. Please try again.');
@@ -35,14 +34,31 @@ const LoginPage = ({ uploadCheck, locale = 'en' }) => {
     };
 
     useEffect(() => {
-        // const unsubscribe = onAuthStateChanged(auth, (user) => {
-        //     if (user) {
-        //         router.push(uploadCheck ? `/${locale}/profile?upload=true` : `/${locale}`);
-        //     }
-        // });
+        // Check for authentication callback (token in URL params or localStorage)
+        if (typeof window === 'undefined') return;
 
-        // return () => unsubscribe();
-    }, [router, uploadCheck, locale]);
+        // Get URL params directly from window.location
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token') || searchParams?.get('token') || localStorage.getItem('authToken');
+        const userName = urlParams.get('userName') || searchParams?.get('userName') || localStorage.getItem('userName');
+        const userImage = urlParams.get('userImage') || searchParams?.get('userImage') || localStorage.getItem('userImage');
+
+        // If we have a token from URL params, store it and redirect
+        if (urlParams.get('token')) {
+            localStorage.setItem('authToken', urlParams.get('token'));
+            if (urlParams.get('userName')) {
+                localStorage.setItem('userName', urlParams.get('userName'));
+            }
+            if (urlParams.get('userImage')) {
+                localStorage.setItem('userImage', urlParams.get('userImage'));
+            }
+
+            // Clean up URL and redirect
+            const cleanUrl = window.location.pathname + (uploadCheck ? '?upload=true' : '');
+            window.history.replaceState({}, '', cleanUrl);
+            router.push(uploadCheck ? `/${locale}/profile?upload=true` : `/${locale}`);
+        }
+    }, [router, uploadCheck, locale, searchParams]);
 
     return (
         <>
@@ -174,9 +190,9 @@ const LoginPage = ({ uploadCheck, locale = 'en' }) => {
                                     </div>
                                 </Link>
                                 <Link className='cursor-pointer' target='_blank' href={'https://www.youtube.com/@SoundEffectButtons'}>
-                                <div className="w-8 h-8 rounded bg-[#0A75C5] text-white flex items-center justify-center hover:bg-[#0A75C5]">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill='white' viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z" /></svg>
-                                </div>
+                                    <div className="w-8 h-8 rounded bg-[#0A75C5] text-white flex items-center justify-center hover:bg-[#0A75C5]">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill='white' viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z" /></svg>
+                                    </div>
                                 </Link>
                             </div>
                         </div>

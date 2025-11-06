@@ -12,7 +12,7 @@ const Users = (props) => {
   
   // React Query mutations for ban/unban
   const banUserMutation = useBanUser();
-  const unbanUserMutation = useUnbanUser();
+  const unbanUserMutation = useBanUser();
 
   const banUserClicked = async (id) => {
     Swal.fire({
