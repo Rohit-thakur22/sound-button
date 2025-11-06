@@ -275,8 +275,8 @@ const Searched = ({ searchText, locale = 'en', catAlias, catUrl }) => {
                             <span className="relative px-5 py-2.5 dark:text-white bg-white hover:text-white dark:bg-[#171F2D] rounded-md group-hover:bg-opacity-0">
                                 {loadingMore ? (
                                   <div className="flex items-center gap-2">
-                                    <LoadingInline size="small" className="w-4 h-4" />
-                                    Loading...
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Loading...
                                   </div>
                                 ) : (
                                   'Show more'
