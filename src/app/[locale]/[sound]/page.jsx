@@ -1,7 +1,18 @@
 import Sound from "@/components/pages/SoundPage";
 import { soundsAPI } from "@/lib/apiServices";
 import { Suspense } from "react";
-import Loading from "@/components/loading/Loading";
+
+// Loading component
+function LoadingSpinner() {
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+        <p className="text-gray-600 dark:text-gray-300">Loading sound...</p>
+      </div>
+    </div>
+  );
+}
 
 export default async function Page({ params }) {
   const { sound, locale } = params;
@@ -27,7 +38,7 @@ export default async function Page({ params }) {
             content={"Download, play and share free " + soundData.name + " sound effect button, viral your soundboard sounds to be featured on world's leaderboard."}
           />
         </head>
-        <Suspense fallback={<Loading message="Loading sound..." />}>
+        <Suspense fallback={<LoadingSpinner />}>
           <Sound slug={id} frameUrl={sound} soundObj={soundData} locale={locale} />
         </Suspense>
       </>

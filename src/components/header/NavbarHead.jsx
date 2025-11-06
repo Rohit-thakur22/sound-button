@@ -6,14 +6,14 @@ import { Avatar, SidebarItem } from "flowbite-react";
 import Image from "next/image";
 import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
-import {
-  onAuthStateChanged,
-  signInWithPopup,
-  GoogleAuthProvider,
-  getAuth,
-  signOut,
-} from "firebase/auth";
-import { auth, googleProvider } from "../../../firebase";
+// import {
+//   onAuthStateChanged,
+//   signInWithPopup,
+//   GoogleAuthProvider,
+//   getAuth,
+//   signOut,
+// } from "firebase/auth";
+// import { auth, googleProvider } from "../../../firebase";
 import { useRouter } from "next/navigation";
 import { useContext } from "react";
 import { ThemeContext } from "../context/theme-context";
@@ -62,21 +62,21 @@ export function NavbarHead({ locale = 'en', active = 'home', theme: propTheme, s
   //     }
   // };
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setLogedIn(true);
-        setUser({
-          name: user.displayName,
-          image: user.photoURL,
-        });
-      } else {
-        setUser(null);
-        setLogedIn(false);
-      }
-    });
-    return () => unsubscribe();
-  }, [router]);
+  // useEffect(() => {
+  //   const unsubscribe = onAuthStateChanged(auth, (user) => {
+  //     if (user) {
+  //       setLogedIn(true);
+  //       setUser({
+  //         name: user.displayName,
+  //         image: user.photoURL,
+  //       });
+  //     } else {
+  //       setUser(null);
+  //       setLogedIn(false);
+  //     }
+  //   });
+  //   return () => unsubscribe();
+  // }, [router]);
 
   function handleUpload() {
     if (logedIn) {

@@ -10,6 +10,8 @@ import "react-toastify/dist/ReactToastify.css";
 import { soundsAPI } from "../../lib/apiServices";
 import Soundbox from "@/components/Soundbox";
 import { useSearchParams } from "next/navigation";
+import { getAllFavouriteSounds } from "../../database/getAllFavouriteSounds";
+import { transformSoundsArray } from "../../lib/dataTransformers";
 import { RWebShare } from "react-web-share";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
@@ -17,10 +19,6 @@ import { auth } from "../../../firebase";
 import FixedAds from "../adsbygoogle/FixedAds";
 import Ads from "../adsbygoogle/Ads";
 import MobileAd from "../adsbygoogle/MobileAd";
-import { useSimilarSounds } from "@/hooks/useSimilarSounds";
-import { useFavoriteSounds } from "@/hooks/useFavoriteSounds";
-import { useToggleFavorite } from "@/hooks/useToggleFavorite";
-import { LoadingInline } from "@/components/loading/Loading";
 
 export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
   const { t } = useTranslation();
@@ -32,42 +30,12 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
   const [favourited, setFavourited] = useState(false);
   const [visibleSoundsCount, setVisibleSoundsCount] = useState(40);
   const [animate, setAnimate] = useState(false);
+  const [similarSounds, setSimilarSounds] = useState();
   const [currentlyPlayingSound, setCurrentlyPlayingSound] = useState(null);
   const [logedIn, setLogedIn] = useState(false);
-
-  // React Query hooks for data fetching
-  const {
-    data: similarSoundsData,
-    isLoading: loadingSimilarSounds,
-    isFetchingNextPage: loadingMore,
-    fetchNextPage,
-    hasNextPage,
-  } = useSimilarSounds({
-    soundObj,
-    initialLimit: 40,
-    incrementBy: 20,
-    enabled: !!soundObj,
-  });
-
-  const { data: favoriteSoundsData } = useFavoriteSounds({
-    enabled: logedIn,
-  });
-
-  const toggleFavoriteMutation = useToggleFavorite();
-
-  // Extract similar sounds from React Query data
-  const similarSounds = useMemo(() => {
-    if (!similarSoundsData?.pages || similarSoundsData.pages.length === 0) return [];
-    // Use the latest page since it contains all items up to the current limit
-    const latestPage = similarSoundsData.pages[similarSoundsData.pages.length - 1];
-    return latestPage?.sounds || [];
-  }, [similarSoundsData]);
-
-  // Get total count from the latest page
-  const totalCount = useMemo(() => {
-    if (!similarSoundsData?.pages || similarSoundsData.pages.length === 0) return 0;
-    return similarSoundsData.pages[similarSoundsData.pages.length - 1]?.totalCount || 0;
-  }, [similarSoundsData]);
+  const [currentLimit, setCurrentLimit] = useState(40);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // Create displayedSounds like Catalog.jsx
   const displayedSounds = useMemo(
@@ -92,45 +60,164 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
   const id = slug;
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setLogedIn(true);
-      } else {
-        setLogedIn(false);
-      }
-    });
-    return () => unsubscribe();
+    // const unsubscribe = onAuthStateChanged(auth, (user) => {
+    //   if (user) {
+    //     setLogedIn(true);
+    //   } else {
+    //     setLogedIn(false);
+    //   }
+    // });
+    // return () => unsubscribe();
   }, [router]);
 
   async function handleShowMoreSounds() {
-    const nextVisibleCount = visibleSoundsCount + 20;
-    
-    // If we need more data and have a next page, fetch it first
-    if (hasNextPage && nextVisibleCount > similarSounds.length) {
-      await fetchNextPage();
+    try {
+      setLoadingMore(true);
+      
+      // Check if we've already loaded all available data
+      if (totalCount > 0 && similarSounds.length >= totalCount) {
+        console.log('All data already loaded, skipping request');
+        return;
+      }
+      
+      // Increase limit by 20 for next request (like Catalog.jsx)
+      const newLimit = currentLimit + 20;
+      
+      let response;
+      
+      if (soundObj && soundObj.categories && soundObj.categories.length > 0) {
+        const categoryName = soundObj.categories[0].name;
+        response = await soundsAPI.getSoundsByCategory(categoryName, {
+          search: "",
+          page: 1,
+          limit: newLimit
+        });
+      } else if (soundObj.name) {
+        response = await soundsAPI.getAllSounds({ 
+          search: soundObj.name, 
+          page: 1, 
+          limit: newLimit 
+        });
+      }
+      
+      const newPage = transformSoundsArray(response.data?.data || response.data || []);
+      
+      // If no new data returned, we've reached the end
+      if (newPage.length === 0) {
+        console.log('No more data available');
+        setLoadingMore(false);
+        return;
+      }
+      
+      // Prevent duplicates by filtering out existing IDs
+      const existingIds = new Set(similarSounds.map(sound => sound.id));
+      const uniqueNewSounds = newPage.filter(sound => !existingIds.has(sound.id));
+      
+      console.log('Loading more sounds:', {
+        newPageCount: newPage.length,
+        uniqueNewSounds: uniqueNewSounds.length,
+        currentSimilarSounds: similarSounds.length,
+        totalCount: response.data?.total || 0,
+        visibleSoundsCount: visibleSoundsCount,
+        newLimit: newLimit,
+        currentLimit: currentLimit
+      });
+      
+      setCurrentLimit(newLimit);
+      
+      const mergedArray = [...similarSounds, ...uniqueNewSounds];
+      setVisibleSoundsCount((prev) => prev + 20);
+      setSimilarSounds(mergedArray);
+      
+    } catch (err) {
+      console.error('Error loading more sounds:', err);
+    } finally {
+      setLoadingMore(false);
     }
-    
-    // Increase visible count
-    setVisibleSoundsCount(nextVisibleCount);
   }
 
-  // Check if current sound is favorited
-  useEffect(() => {
-    if (logedIn && favoriteSoundsData?.success && favoriteSoundsData.sounds) {
-      const sound = favoriteSoundsData.sounds.find((sound) => sound.uid === soundObj?.uid);
+  async function getherFavSounds() {
+    if (logedIn) {
+      const favs = await getAllFavouriteSounds();
+      const sound =
+        favs.sounds &&
+        favs.sounds.find((sound) => sound.uid === soundObj.uid);
       if (sound) {
         setFavourited(true);
-      } else {
-        setFavourited(false);
       }
-    } else {
-      setFavourited(false);
     }
-  }, [logedIn, favoriteSoundsData, soundObj]);
+  }
+
+  useEffect(() => {
+    getherFavSounds();
+  }, [logedIn]);
+
+  async function getherSimilarSounds() {
+    if (soundObj && soundObj.categories && soundObj.categories.length > 0) {
+      try {
+        // Get the first category from the sound object
+        const categoryName = soundObj.categories[0].name;
+        const response = await soundsAPI.getSoundsByCategory(categoryName, { 
+          search: "", 
+          page: 1, 
+          limit: currentLimit 
+        });
+        
+        // Transform the data using the same pattern as Catalog.jsx
+        const sounds = transformSoundsArray(response.data?.data || []);
+        
+        // Set total count from API response
+        setTotalCount(response.data?.total || 0);
+        
+        // Filter out the current sound from similar sounds
+        const filteredSounds = sounds.filter(sound => sound.id !== soundObj.id);
+        setSimilarSounds(filteredSounds);
+      } catch (error) {
+        console.error('Error loading similar sounds by category:', error);
+        // Fallback to search by name if category fetch fails
+        if (soundObj.name) {
+          try {
+            const response = await soundsAPI.getAllSounds({ 
+              search: soundObj.name, 
+              page: 1, 
+              limit: 40 
+            });
+            const sounds = transformSoundsArray(response.data || []);
+            const filteredSounds = sounds.filter(sound => sound.id !== soundObj.id);
+            setSimilarSounds(filteredSounds);
+          } catch (searchError) {
+            console.error('Error loading similar sounds by name:', searchError);
+            setSimilarSounds([]);
+          }
+        } else {
+          setSimilarSounds([]);
+        }
+      }
+    } else if (soundObj.name) {
+      // Fallback to search by name if no categories
+      try {
+        const response = await soundsAPI.getAllSounds({ 
+          search: soundObj.name, 
+          page: 1, 
+          limit: 40 
+        });
+        const sounds = transformSoundsArray(response.data || []);
+        const filteredSounds = sounds.filter(sound => sound.id !== soundObj.id);
+        setSimilarSounds(filteredSounds);
+      } catch (error) {
+        console.error('Error loading similar sounds by name:', error);
+        setSimilarSounds([]);
+      }
+    }
+  }
 
   const handlePlaySound = (soundId) => {
     setCurrentlyPlayingSound(soundId);
   };
+
+  useEffect(() => {
+    getherSimilarSounds();
+  }, [soundObj]);
 
   const handlePlayPause = () => {
     if (!audioRef.current) return;
@@ -193,14 +280,26 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
 
   async function toggleFavourite() {
     if (logedIn) {
-      toggleFavoriteMutation.mutate(id, {
-        onSuccess: (data) => {
+      try {
+        const response = await soundsAPI.toggleFavorite(id);
+        
+        if (response.data && response.data.success) {
           // Update the favorites count in the UI
-          if (data && data.success) {
-            setFavourited(data.action === 'added');
+          setFavourited(response.data.action === 'added');
+          
+          // Show appropriate message based on the action
+          if (response.data.action === 'added') {
+            toast.success('Added to favourites');
+          } else if (response.data.action === 'removed') {
+            toast.success('Removed from favourites');
           }
+        } else {
+          toast.error(response.data?.message || 'Failed to update favorites');
         }
-      });
+      } catch (error) {
+        console.error('Error toggling favorite:', error);
+        toast.error('Failed to update favorites');
+      }
     } else {
       router.push("/login");
     }
@@ -633,7 +732,7 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
               <span className="relative px-5 py-2.5 bg-white dark:text-white hover:text-white dark:bg-[#171F2D] rounded-md group-hover:bg-opacity-0">
                 {loadingMore ? (
                   <div className="flex items-center gap-2">
-                    <LoadingInline size="small" className="w-4 h-4" />
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                     Loading...
                   </div>
                 ) : (

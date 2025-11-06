@@ -110,14 +110,14 @@ const Searched = ({ searchText, locale = 'en', catAlias, catUrl }) => {
     }
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            if (user) {
-                setLogedIn(true)
-            } else {
-                setLogedIn(false)
-            }
-        });
-        return () => unsubscribe();
+        // const unsubscribe = onAuthStateChanged(auth, (user) => {
+        //     if (user) {
+        //         setLogedIn(true)
+        //     } else {
+        //         setLogedIn(false)
+        //     }
+        // });
+        // return () => unsubscribe();
     }, [router]);
 
     function handleUpload() {

@@ -42,14 +42,14 @@ const Soundbox = React.memo(({
   const [loggedIn, setLogedIn] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setLogedIn(true)
-      } else {
-        setLogedIn(false)
-      }
-    });
-    return () => unsubscribe();
+    // const unsubscribe = onAuthStateChanged(auth, (user) => {
+    //   if (user) {
+    //     setLogedIn(true)
+    //   } else {
+    //     setLogedIn(false)
+    //   }
+    // });
+    // return () => unsubscribe();
   }, [router]);
 
   async function toggleFavourite() {

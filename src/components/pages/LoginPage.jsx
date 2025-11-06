@@ -35,13 +35,13 @@ const LoginPage = ({ uploadCheck, locale = 'en' }) => {
     };
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            if (user) {
-                router.push(uploadCheck ? `/${locale}/profile?upload=true` : `/${locale}`);
-            }
-        });
+        // const unsubscribe = onAuthStateChanged(auth, (user) => {
+        //     if (user) {
+        //         router.push(uploadCheck ? `/${locale}/profile?upload=true` : `/${locale}`);
+        //     }
+        // });
 
-        return () => unsubscribe();
+        // return () => unsubscribe();
     }, [router, uploadCheck, locale]);
 
     return (

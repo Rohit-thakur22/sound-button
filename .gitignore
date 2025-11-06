@@ -1,0 +1,82 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json  # remove if you want to keep lockfile; usually you DO keep it
+# If you use pnpm, you might want to ignore the store:
+.pnpm-store/
+
+# Next.js build output
+.next/
+out/
+dist/
+
+# Vercel / deployment
+.vercel/
+.vercel_build_output/
+.vercel/output/
+
+# Static site exports / caches
+.cache/
+.cache-loader/
+.cache-next/
+.storybook-static/
+
+# Log files
+logs
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# dotenv environment variables
+.env.local
+.env.*.local
+.env
+.env.production
+.env.test
+.env.development
+
+# Local app settings
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor swap / temp files
+*~
+*.swp
+*.swo
+
+# TypeScript
+*.tsbuildinfo
+
+# Coverage
+coverage/
+coverage-*
+
+# Build tools / caches
+.cache/
+.next/cache/
+parcel-bundler-cache
+/.turbo
+.cache/turborepo/
+
+# Docker
+docker-compose.override.yml
+docker-compose.local.yml
+
+# Misc
+/.env.local
+/.env.*.local
+.storybook/
+*.tgz

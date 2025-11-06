@@ -28,18 +28,18 @@ const ProfilePage = ({ uploadCheck, creatorsdata, locale = 'en' }) => {
     const [favouriteList, setFavouriteList] = useState([])
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            if (user) {
-                setUser({
-                    id: user.uid,
-                    name: user.displayName,
-                    image: user.photoURL,
-                });
-            } else {
-                router.push('/');
-            }
-        });
-        return () => unsubscribe();
+        // const unsubscribe = onAuthStateChanged(auth, (user) => {
+        //     if (user) {
+        //         setUser({
+        //             id: user.uid,
+        //             name: user.displayName,
+        //             image: user.photoURL,
+        //         });
+        //     } else {
+        //         router.push('/');
+        //     }
+        // });
+        // return () => unsubscribe();
     }, [router]);
 
     async function getUserDetails(id) {
