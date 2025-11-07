@@ -32,8 +32,15 @@ const Admin = () => {
   const [usersCurrentPage, setUsersCurrentPage] = useState(1);
   const [usersSearchTerm, setUsersSearchTerm] = useState("");
   const [usersLocalSearch, setUsersLocalSearch] = useState("");
+  const [adminCheck, setAdminCheck] = useState(null);
 
-  const adminCheck = localStorage.getItem('adminAuthToken');
+  // Check for admin token only on client side
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setAdminCheck(localStorage.getItem('adminAuthToken'));
+    }
+  }, []);
+
   // Use React Query for categories
   const {
     data: categoriesData,
@@ -172,8 +179,21 @@ const Admin = () => {
     }
   }, [usersError]);
 
- if(!adminCheck) {
-  return router.replace("/en/admin/login");
+ // Redirect to login if not authenticated (only after client-side check)
+ useEffect(() => {
+   if (adminCheck === null) return; // Still checking
+   if (!adminCheck) {
+     router.replace("/en/admin/login");
+   }
+ }, [adminCheck, router]);
+
+ // Show nothing while checking authentication
+ if (adminCheck === null) {
+   return null;
+ }
+
+ if (!adminCheck) {
+   return null; // Will redirect via useEffect
  }
 
   return (

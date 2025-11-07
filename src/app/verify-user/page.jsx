@@ -1,10 +1,10 @@
 'use client'
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import Loading from '@/components/loading/Loading';
 
-const VerifyUser = () => {
+const VerifyUserContent = () => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [loading, setLoading] = useState(true);
@@ -104,6 +104,18 @@ const VerifyUser = () => {
     }
 
     return null;
+};
+
+const VerifyUser = () => {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center">
+                Loading...
+            </div>
+        }>
+            <VerifyUserContent />
+        </Suspense>
+    );
 };
 
 export default VerifyUser;
