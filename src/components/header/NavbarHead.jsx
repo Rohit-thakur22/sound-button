@@ -6,14 +6,7 @@ import { Avatar, SidebarItem } from "flowbite-react";
 import Image from "next/image";
 import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
-// import {
-//   onAuthStateChanged,
-//   signInWithPopup,
-//   GoogleAuthProvider,
-//   getAuth,
-//   signOut,
-// } from "firebase/auth";
-// import { auth, googleProvider } from "../../../firebase";
+
 import { useRouter } from "next/navigation";
 import { useContext } from "react";
 import { ThemeContext } from "../context/theme-context";
@@ -37,13 +30,13 @@ export function NavbarHead({ locale = 'en', active = 'home', theme: propTheme, s
     // Update i18n first
     i18n.changeLanguage(lng);
     localStorage.setItem("language", lng);
-    
+
     // Small delay to ensure language change is processed
     setTimeout(() => {
       // Update URL with new locale
       const currentPath = window.location.pathname;
       const newPath = currentPath.replace(`/${locale}`, `/${lng}`);
-      
+
       // Redirect to new URL
       window.location.href = newPath;
     }, 100);
@@ -62,38 +55,51 @@ export function NavbarHead({ locale = 'en', active = 'home', theme: propTheme, s
   //     }
   // };
 
-  // useEffect(() => {
-  //   const unsubscribe = onAuthStateChanged(auth, (user) => {
-  //     if (user) {
-  //       setLogedIn(true);
-  //       setUser({
-  //         name: user.displayName,
-  //         image: user.photoURL,
-  //       });
-  //     } else {
-  //       setUser(null);
-  //       setLogedIn(false);
-  //     }
-  //   });
-  //   return () => unsubscribe();
-  // }, [router]);
+  useEffect(() => {
+    // Get user from localStorage (set after verify-user)
+    const authToken = localStorage.getItem('authToken');
+    const loggedInUser = localStorage.getItem('logged_in_user');
+    console.log('loggedInUser', loggedInUser);
+
+    if (authToken && loggedInUser) {
+      try {
+        let userData = JSON.parse(loggedInUser);
+        userData = userData.user;
+        console.log('user-data', userData);
+        setUser({
+          name: userData.name || '',
+          image: userData.photoUrl || ''
+        });
+        setLogedIn(true);
+      } catch (e) {
+        setUser({
+          name: userName || '',
+          image: userImage || ''
+        });
+        setLogedIn(true);
+      }
+    } else {
+      setUser(null);
+      setLogedIn(false);
+    }
+  }, [router]);
 
   function handleUpload() {
     if (logedIn) {
-      router.push("/profile?upload=true");
+      router.push(`/${locale}/profile?upload=true`);
     } else {
-      router.push("/login?upload=true");
+      router.push(`/${locale}/login?upload=true`);
     }
   }
 
   const handleLogout = async () => {
     try {
-      localStorage.removeItem("logged_in_user");
-      await signOut(auth);
+      const { logout } = await import('@/lib/auth');
+      await logout();
       setUser(null);
       setLogedIn(false);
-      router.push("/");
-      if (window.location.pathname === "/") {
+      router.push(`/${locale}`);
+      if (window.location.pathname === `/${locale}` || window.location.pathname === `/${locale}/`) {
         location.reload();
       }
       setVisible(false);
@@ -102,11 +108,15 @@ export function NavbarHead({ locale = 'en', active = 'home', theme: propTheme, s
     }
   };
 
+
+
   useEffect(() => {
     if (user && user.image) {
       setPhoto(user.image);
     }
   }, [user]);
+
+
 
   return (
     <>
@@ -142,7 +152,7 @@ export function NavbarHead({ locale = 'en', active = 'home', theme: propTheme, s
               as={Link}
               href={`/${locale}/just-added`}
               active={active === "just_added"}
-              // prefetch={false}
+            // prefetch={false}
             >
               {t("just_added")}
             </Navbar.Link>
@@ -2180,10 +2190,10 @@ export function NavbarHead({ locale = 'en', active = 'home', theme: propTheme, s
                 )
               }
             >
-              {user && user.image && (
+              {user && photo && (
                 <div>
                   <Dropdown.Item
-                    href={"/profile"}
+                    href={`/${locale}/profile`}
                     className="flex gap-3 px-10 pl-3"
                   >
                     <svg
@@ -2254,25 +2264,26 @@ export function NavbarHead({ locale = 'en', active = 'home', theme: propTheme, s
             {user && user.image ? (
               <div>
                 <Dropdown.Item
-                  href={"/profile"}
                   className="flex gap-3 px-10 pl-3"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="feather feather-user"
-                    fill="#F1F1F1"
-                    height="20"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    strokeWidth="2"
-                    viewBox="0 0 24 24"
-                    width="24"
-                  >
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                    <circle cx="12" cy="7" r="4" />
-                  </svg>
-                  <span className=" dark:text-gray-300">Profile</span>
+                  <Link href={`/${locale}/profile`}>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="feather feather-user"
+                      fill="#F1F1F1"
+                      height="20"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                      width="24"
+                    >
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
+                    <span className=" dark:text-gray-300">Profile</span>
+                  </Link>
                 </Dropdown.Item>
                 <Dropdown.Item
                   onClick={handleLogout}

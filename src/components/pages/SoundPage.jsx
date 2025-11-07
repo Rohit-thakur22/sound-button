@@ -73,18 +73,18 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
   async function handleShowMoreSounds() {
     try {
       setLoadingMore(true);
-      
+
       // Check if we've already loaded all available data
       if (totalCount > 0 && similarSounds.length >= totalCount) {
         console.log('All data already loaded, skipping request');
         return;
       }
-      
+
       // Increase limit by 20 for next request (like Catalog.jsx)
       const newLimit = currentLimit + 20;
-      
+
       let response;
-      
+
       if (soundObj && soundObj.categories && soundObj.categories.length > 0) {
         const categoryName = soundObj.categories[0].name;
         response = await soundsAPI.getSoundsByCategory(categoryName, {
@@ -93,26 +93,26 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
           limit: newLimit
         });
       } else if (soundObj.name) {
-        response = await soundsAPI.getAllSounds({ 
-          search: soundObj.name, 
-          page: 1, 
-          limit: newLimit 
+        response = await soundsAPI.getAllSounds({
+          search: soundObj.name,
+          page: 1,
+          limit: newLimit
         });
       }
-      
+
       const newPage = transformSoundsArray(response.data?.data || response.data || []);
-      
+
       // If no new data returned, we've reached the end
       if (newPage.length === 0) {
         console.log('No more data available');
         setLoadingMore(false);
         return;
       }
-      
+
       // Prevent duplicates by filtering out existing IDs
       const existingIds = new Set(similarSounds.map(sound => sound.id));
       const uniqueNewSounds = newPage.filter(sound => !existingIds.has(sound.id));
-      
+
       console.log('Loading more sounds:', {
         newPageCount: newPage.length,
         uniqueNewSounds: uniqueNewSounds.length,
@@ -122,13 +122,13 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
         newLimit: newLimit,
         currentLimit: currentLimit
       });
-      
+
       setCurrentLimit(newLimit);
-      
+
       const mergedArray = [...similarSounds, ...uniqueNewSounds];
       setVisibleSoundsCount((prev) => prev + 20);
       setSimilarSounds(mergedArray);
-      
+
     } catch (err) {
       console.error('Error loading more sounds:', err);
     } finally {
@@ -157,18 +157,18 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
       try {
         // Get the first category from the sound object
         const categoryName = soundObj.categories[0].name;
-        const response = await soundsAPI.getSoundsByCategory(categoryName, { 
-          search: "", 
-          page: 1, 
-          limit: currentLimit 
+        const response = await soundsAPI.getSoundsByCategory(categoryName, {
+          search: "",
+          page: 1,
+          limit: currentLimit
         });
-        
+
         // Transform the data using the same pattern as Catalog.jsx
         const sounds = transformSoundsArray(response.data?.data || []);
-        
+
         // Set total count from API response
         setTotalCount(response.data?.total || 0);
-        
+
         // Filter out the current sound from similar sounds
         const filteredSounds = sounds.filter(sound => sound.id !== soundObj.id);
         setSimilarSounds(filteredSounds);
@@ -177,10 +177,10 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
         // Fallback to search by name if category fetch fails
         if (soundObj.name) {
           try {
-            const response = await soundsAPI.getAllSounds({ 
-              search: soundObj.name, 
-              page: 1, 
-              limit: 40 
+            const response = await soundsAPI.getAllSounds({
+              search: soundObj.name,
+              page: 1,
+              limit: 40
             });
             const sounds = transformSoundsArray(response.data || []);
             const filteredSounds = sounds.filter(sound => sound.id !== soundObj.id);
@@ -196,10 +196,10 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
     } else if (soundObj.name) {
       // Fallback to search by name if no categories
       try {
-        const response = await soundsAPI.getAllSounds({ 
-          search: soundObj.name, 
-          page: 1, 
-          limit: 40 
+        const response = await soundsAPI.getAllSounds({
+          search: soundObj.name,
+          page: 1,
+          limit: 40
         });
         const sounds = transformSoundsArray(response.data || []);
         const filteredSounds = sounds.filter(sound => sound.id !== soundObj.id);
@@ -229,14 +229,14 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
       if (!soundUrl) {
         loadSound(soundObj.url);
       }
-      
+
       // Ensure audio is loaded before playing
       if (audioRef.current.readyState < 3) {
         audioRef.current.load();
       }
-      
+
       const playPromise = audioRef.current.play();
-      
+
       if (playPromise !== undefined) {
         playPromise
           .then(() => {
@@ -282,11 +282,11 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
     if (logedIn) {
       try {
         const response = await soundsAPI.toggleFavorite(id);
-        
+
         if (response.data && response.data.success) {
           // Update the favorites count in the UI
           setFavourited(response.data.action === 'added');
-          
+
           // Show appropriate message based on the action
           if (response.data.action === 'added') {
             toast.success('Added to favourites');
@@ -503,8 +503,9 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
                     console.error('Audio load error:', e);
                     console.error('Failed URL:', soundUrl);
                   }}
-                  onLoadStart={() => console.log('Audio loading started:', soundUrl)}
-                  onCanPlay={() => console.log('Audio can play:', soundUrl)}
+
+                  onLoadStart={() => null}
+                  onCanPlay={() => null}
                 ></audio>
                 <button
                   style={{ color: soundObj && soundObj.color }}
@@ -632,7 +633,7 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
                     Share
                   </button>
                 </RWebShare>
-                <button 
+                <button
                   onClick={copyShareUrl}
                   className="bg-[#6B7280] text-white rounded flex mx-auto max-w-[400px] items-center gap-3 w-full justify-center py-2.5"
                 >

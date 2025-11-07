@@ -1,19 +1,24 @@
-import { getAuth } from 'firebase/auth';
+import { checkIsAdmin, getCurrentUser } from '../lib/auth';
 
 // Function to check if current user is admin
-export const isAdmin = () => {
-    const auth = getAuth();
-    const user = auth.currentUser;
+export const isAdmin = async (userId = null) => {
+    try {
+        const user = await getCurrentUser();
+        
+        if (!user) {
+            return false;  // No user is signed in
+        }
 
-    if (!user) {
-        return false;  // No user is signed in
+        // If userId is provided, check if it matches current user
+        if (userId && user.id !== userId && user.uid !== userId && user._id !== userId) {
+            return false;
+        }
+
+        // Check admin status
+        const adminStatus = await checkIsAdmin();
+        return adminStatus;
+    } catch (error) {
+        console.error('Error checking admin status:', error);
+        return false;
     }
-
-    // Check the sign-in method of the current user
-    const providerData = user.providerData;
-
-    // Look for the sign-in method that indicates email/password
-    const isAdmin = providerData.some((provider) => provider.providerId === 'password');
-    
-    return isAdmin,user.uid;
 };

@@ -11,8 +11,7 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Swal from "sweetalert2";
 import logo from "../../../assets/images/logo.png";
-import { createUser } from "../../../database/createUser";
-import { isAdmin } from "../../../database/isAdmin";
+import { createUser } from "@/database/createUser";
 import AdminNewSound from "@/components/adminnewsound/AdminNewSound";
 import BulkUpload from "@/components/bulkupload/BulkUpload";
 import EditSound from "@/components/editsound/EditSound";
@@ -34,8 +33,7 @@ const Admin = () => {
   const [usersSearchTerm, setUsersSearchTerm] = useState("");
   const [usersLocalSearch, setUsersLocalSearch] = useState("");
 
-  const adminCheck = isAdmin();
-
+  const adminCheck = localStorage.getItem('adminAuthToken');
   // Use React Query for categories
   const {
     data: categoriesData,
@@ -174,12 +172,9 @@ const Admin = () => {
     }
   }, [usersError]);
 
-  // // Admin check and redirect
-  // if (adminCheck) {
-  //   createUser();
-  // } else {
-  //   return router.replace("/admin/login");
-  // }
+ if(!adminCheck) {
+  return router.replace("/en/admin/login");
+ }
 
   return (
     <div>

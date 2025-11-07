@@ -15,8 +15,21 @@ const api = axios.create({
 // Request interceptor to add auth token if available
 api.interceptors.request.use(
   (config) => {
-    // Get token from localStorage or sessionStorage
-    const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+    if (typeof window === 'undefined') return config;
+    
+    // Determine which token to use based on the request URL
+    const url = config.url || '';
+    const isAdminRoute = url.includes('/admin/') || url.includes('/auth/admin/');
+    
+    let token = null;
+    
+    if (isAdminRoute) {
+      // Use admin token for admin routes
+      token = localStorage.getItem('adminAuthToken');
+    } else {
+      // Use regular user token for other routes
+      token = localStorage.getItem('authToken');
+    }
     
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -58,9 +71,16 @@ api.interceptors.response.use(
     
     // Handle common errors
     if (error.response?.status === 401) {
-      // Unauthorized - clear token and redirect to login
+      // Unauthorized - clear appropriate token based on the route
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('authToken');
+        const url = error.config?.url || '';
+        const isAdminRoute = url.includes('/admin/') || url.includes('/auth/admin/');
+        
+        if (isAdminRoute) {
+          localStorage.removeItem('adminAuthToken');
+        } else {
+          localStorage.removeItem('authToken');
+        }
         // You can add redirect logic here if needed
       }
     }

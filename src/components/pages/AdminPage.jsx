@@ -7,8 +7,7 @@ import { ThemeContext } from '@/components/context/theme-context';
 import { useTranslation } from 'react-i18next';
 import '../../app/i18n';
 import { useRouter } from 'next/navigation';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../../../firebase';
+import { getCurrentUser, checkIsAdmin, isAuthenticated, isAdminAuthenticated } from '@/lib/auth';
 import { isAdmin } from '@/database/isAdmin';
 import Loading from '@/components/loading/Loading';
 import { ToastContainer, toast } from 'react-toastify';
@@ -23,28 +22,38 @@ const AdminPage = ({ locale = 'en' }) => {
   const [adminStatus, setAdminStatus] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (currentUser) {
-        setUser(currentUser);
-        try {
-          const adminCheck = await isAdmin(currentUser.uid);
-          setAdminStatus(adminCheck);
-          if (!adminCheck) {
-            toast.error(t('access_denied'));
-            router.push(`/${locale}`);
-          }
-        } catch (error) {
-          console.error('Error checking admin status:', error);
-          toast.error(t('error_occurred'));
-          router.push(`/${locale}`);
+    const checkAuth = async () => {
+      try {
+        // Check for admin authentication token first
+        if (!isAdminAuthenticated()) {
+          router.push(`/${locale}/admin/login`);
+          setLoading(false);
+          return;
         }
-      } else {
-        router.push(`/${locale}/login`);
-      }
-      setLoading(false);
-    });
 
-    return () => unsubscribe();
+        // For admin pages, we can still get user info if needed
+        // but the primary check is the admin token
+        const currentUser = await getCurrentUser();
+        setUser(currentUser);
+        
+        // Verify admin status through API if needed
+        const adminCheck = await isAdmin(currentUser?.id || currentUser?.uid || currentUser?._id);
+        setAdminStatus(adminCheck);
+        
+        if (!adminCheck) {
+          toast.error(t('access_denied'));
+          router.push(`/${locale}/admin/login`);
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+        toast.error(t('error_occurred'));
+        router.push(`/${locale}/admin/login`);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
   }, [router, locale, t]);
 
   if (loading) {

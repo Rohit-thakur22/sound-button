@@ -4,6 +4,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ProfileSoundBox from '../ProfileSoundBox';
 import NewSound from '../NewSound/NewSound';
+import Soundbox from '../Soundbox';
 
 const Created = (props) => {
     const [currentlyPlayingSound, setCurrentlyPlayingSound] = useState(null);
@@ -87,7 +88,7 @@ const Created = (props) => {
                 <div className="md:w-[90%] px-5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 my-5 md:my-16  gap-5">
 
                     {filteredData && filteredData.length > 0 ? filteredData.map((sound) => (
-                        <ProfileSoundBox
+                        <Soundbox
                             key={sound.id}
                             id={sound.id}
                             name={sound.name}

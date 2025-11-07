@@ -1,11 +1,20 @@
-import { getAuth } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { getCurrentUser } from '../lib/auth';
 
 export const userSocialUpdate = async (instagram, discord, youtube) => {
-    const auth = getAuth();
-    const user = auth.currentUser;
-    const userRef = doc(db, 'USERS', user.uid);
+    const user = await getCurrentUser();
+    
+    if (!user) {
+        throw new Error('User not authenticated');
+    }
+
+    const userId = user.id || user.uid || user._id;
+    if (!userId) {
+        throw new Error('User ID not found');
+    }
+
+    const userRef = doc(db, 'USERS', userId);
 
     const userDoc = await getDoc(userRef);
 

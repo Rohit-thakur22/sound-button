@@ -138,9 +138,10 @@ const NewSound = (props) => {
                 
                 // Call the API
                 const response = await soundsAPI.createSound(formData);
+                console.log('response.data.success', response);
                 
-                if (response.data && response.data.success) {
-                    toast.success('Sound uploaded successfully!');
+                if (response.status === 201) {
+                    toast.success(response.data.message);
                     props.newSoundSubmit();
                 } else {
                     toast.error(response.data?.message || 'Failed to upload sound');

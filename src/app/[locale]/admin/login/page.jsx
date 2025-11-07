@@ -23,10 +23,11 @@ const Login = () => {
         password
       });
       
-      // Store the access token in localStorage
+      // Store the admin access token in localStorage with separate key
       if (response.data?.token || response.data?.accessToken) {
         const token = response.data.token || response.data.accessToken;
-        localStorage.setItem('authToken', token);
+        // Use separate key for admin token to avoid conflicts with regular user tokens
+        localStorage.setItem('adminAuthToken', token);
         
         setEmail('')
         setPassword('')

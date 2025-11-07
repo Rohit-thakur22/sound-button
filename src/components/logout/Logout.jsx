@@ -1,11 +1,11 @@
 // components/Logout.js
-import { auth, signOut } from "../../../firebase";
+import { logout } from "@/lib/auth";
 
 const Logout = () => {
   const handleLogout = async () => {
     try {
-      localStorage.removeItem('logged_in_user');
-      await signOut(auth);
+      await logout();
+      window.location.reload();
     } catch (error) {
       console.error("Error logging out:", error);
     }

@@ -1,4 +1,4 @@
-import { getAuth } from 'firebase/auth';
+import { getCurrentUser } from '../lib/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import CryptoJS from 'crypto-js';
@@ -13,12 +13,14 @@ const generateSearchKeywords = (name) => {
 };
 
 export const uploadSound = async (file, soundData) => {
-    const auth = getAuth();
-    const user = auth.currentUser;
+    const user = await getCurrentUser();
 
     if (!user) throw new Error('User not authenticated');
 
-    const soundId = `${user.uid}${Date.now()}`;
+    const userId = user.id || user.uid || user._id;
+    if (!userId) throw new Error('User ID not found');
+
+    const soundId = `${userId}${Date.now()}`;
     const soundRef = ref(storage, `sounds/${soundId}`);
 
     // Upload the file to Firebase Storage
@@ -36,7 +38,7 @@ export const uploadSound = async (file, soundData) => {
         ...soundData,
         uid: soundId,
         link: encryptedUrl,
-        author: user.uid,
+        author: userId,
         downloads: 0,
         favorites: 0,
         tags: soundData.tags,

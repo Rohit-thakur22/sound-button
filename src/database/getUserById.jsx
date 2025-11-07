@@ -7,6 +7,7 @@ export const getUserById = async (userId) => {
       
       // Transform the API response to match the expected format
       const userData = {
+        ...response.data,
           id: response.data.id,
           authId: response.data.authId,
           name: response.data.name,

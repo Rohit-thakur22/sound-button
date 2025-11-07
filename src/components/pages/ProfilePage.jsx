@@ -3,9 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Created from '@/components/table/Created';
 import Favourites from '@/components/favourites/Favourites';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../../../firebase';
-import { getUserSounds } from '../../database/getUserSounds';
+
 import { NavbarHead } from '@/components/header/NavbarHead';
 import { Avatar } from 'flowbite-react';
 import Botbar from '../footer/Botbar';
@@ -14,6 +12,8 @@ import { userSocialUpdate } from '../../database/userSocialUpdate';
 import { getUserById } from '../../database/getUserById';
 import Link from 'next/link';
 import { getAllFavouriteSounds } from '@/database/getAllFavouriteSounds';
+import { soundsAPI } from '@/lib/apiServices';
+import Loading from '@/components/loading/Loading';
 
 const ProfilePage = ({ uploadCheck, creatorsdata, locale = 'en' }) => {
     const router = useRouter();
@@ -26,58 +26,79 @@ const ProfilePage = ({ uploadCheck, creatorsdata, locale = 'en' }) => {
     const [discord, setDiscord] = useState()
     const [youtube, setYoutube] = useState()
     const [favouriteList, setFavouriteList] = useState([])
+    const [loadingSounds, setLoadingSounds] = useState(false)
 
     useEffect(() => {
-        // const unsubscribe = onAuthStateChanged(auth, (user) => {
-        //     if (user) {
-        //         setUser({
-        //             id: user.uid,
-        //             name: user.displayName,
-        //             image: user.photoURL,
-        //         });
-        //     } else {
-        //         router.push('/');
-        //     }
-        // });
-        // return () => unsubscribe();
-    }, [router]);
+        // Get user from localStorage (set after verify-user)
+        const authToken = localStorage.getItem('authToken');
+        const loggedInUser = localStorage.getItem('logged_in_user');
+
+        if (authToken && loggedInUser) {
+            try {
+                let userData = JSON.parse(loggedInUser);
+                // Handle nested user object from API response
+                if (userData.user) {
+                    userData = userData.user;
+                }
+                setUser({
+                    id: userData.id,
+                    name: userData.name || '',
+                    image: userData.photoUrl || ''
+                });
+            } catch (e) {
+                console.error('Error parsing user data:', e);
+                router.push(`/${locale}`);
+            }
+        } else {
+            router.push(`/${locale}`);
+        }
+    }, [router, locale]);
 
     async function getUserDetails(id) {
         const userDetails = await getUserById(id)
+        console.log('userDetails', userDetails)
         setInstagram(userDetails.instagram)
         setDiscord(userDetails.discord)
         setYoutube(userDetails.youtube)
         setUserData(userDetails)
+
+    }
+
+    async function getUserSounds(userId) {
+        try {
+            setLoadingSounds(true)
+            const response = await soundsAPI.getSoundsByUser(userId)
+            // Transform the API response to match the expected format
+            const sounds = response.data.sounds.map(sound => ({
+                id: sound.id,
+                name: sound.name,
+                link: sound.url, // Convert url to link
+                description: sound.description,
+                author: response.data.authId,
+                color: sound.color,
+                favorites: sound.favorites,
+                downloads: sound.downloads,
+                tags: sound.tags || [],
+                is_deleted: sound.isDeleted,
+                created_at: sound.createdAt
+            }))
+
+            setFavouriteList(response.data.favoriteSounds)
+            setAllSoundsOfUser(sounds)
+        } catch (error) {
+            console.error('Error fetching user sounds:', error)
+            setAllSoundsOfUser([])
+        } finally {
+            setLoadingSounds(false)
+        }
     }
 
     useEffect(() => {
         if (user && user.id) {
             getUserDetails(user.id)
+            getUserSounds(user.id)
         }
-    }, [user])
-
-    async function getAllSounds() {
-        if (user) {
-            const allSounds = await getUserSounds(user && user.uid)
-            setAllSoundsOfUser(allSounds)
-        }
-    }
-
-    useEffect(() => {
-        getAllSounds()
-    }, [user])
-
-    async function getFavouriteSounds() {
-        const favoriteSounds = await getAllFavouriteSounds();
-        setFavouriteList(favoriteSounds.sounds);
-    }
-
-    useEffect(() => {
-        if (user) {
-            getFavouriteSounds();
-        }
-    }, [user,refreshKey]);
-
+    }, [user, refreshKey])
 
     async function updateSocials(instagram, discord, youtube) {
         const result = await userSocialUpdate(instagram, discord, youtube)
@@ -117,11 +138,11 @@ const ProfilePage = ({ uploadCheck, creatorsdata, locale = 'en' }) => {
         });
     }
 
-    useEffect(() => {
-        if (filters === 'created') {
-            getAllSounds()
-        }
-    }, [filters, refreshKey])
+    // useEffect(() => {
+    //     if (filters === 'created') {
+    //         getAllSounds()
+    //     }
+    // }, [filters, refreshKey])
 
     const top20Ids = creatorsdata && creatorsdata.slice(0, 20).map(creator => creator.id);
     const istopCreator = top20Ids.includes(user && user.id);
@@ -371,13 +392,19 @@ const ProfilePage = ({ uploadCheck, creatorsdata, locale = 'en' }) => {
                 </div>
 
                 <div className='w-full mt-8'>
-                    {(() => {
-                        if (filters === 'created') {
-                            return <Created uploadCheck={uploadCheck} allSoundsOfUser={allSoundsOfUser} setRefreshKey={setRefreshKey} />
-                        } else if (filters === 'favourite') {
-                            return <Favourites setRefreshKey={setRefreshKey} favoriteSounds={favouriteList} />
-                        }
-                    })()}
+                    {loadingSounds ? (
+                        <div className='flex items-center justify-center py-20'>
+                            <Loading size="default" message="Loading sounds..." />
+                        </div>
+                    ) : (
+                        (() => {
+                            if (filters === 'created') {
+                                return <Created uploadCheck={uploadCheck} allSoundsOfUser={allSoundsOfUser} setRefreshKey={setRefreshKey} />
+                            } else if (filters === 'favourite') {
+                                return <Favourites setRefreshKey={setRefreshKey} favoriteSounds={favouriteList} />
+                            }
+                        })()
+                    )}
                 </div>
 
             </main>

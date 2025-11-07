@@ -1,14 +1,20 @@
 import { doc, updateDoc, increment, getDoc } from 'firebase/firestore';
-import { auth, db } from '../../firebase';
+import { db } from '../../firebase';
+import { getCurrentUser } from '../lib/auth';
 
 export const removeFavouriteSound = async (soundId) => {
-    const user = auth.currentUser;
+    const user = await getCurrentUser();
 
     if (!user) {
         return { success: false, message: 'Not logged in' };
     }
 
-    const userRef = doc(db, 'USERS', user.uid);
+    const userId = user.id || user.uid || user._id;
+    if (!userId) {
+        return { success: false, message: 'User ID not found' };
+    }
+
+    const userRef = doc(db, 'USERS', userId);
     const soundRef = doc(db, 'SOUNDS', soundId);
 
     try {

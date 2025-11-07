@@ -12,16 +12,17 @@ import { auth } from '../../firebase';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { soundsAPI } from '@/lib/apiServices';
+import { ResponseCookies } from 'next/dist/compiled/@edge-runtime/cookies';
 
-const Soundbox = React.memo(({ 
-  id, 
-  name, 
-  authorId, 
-  authorName, 
-  authorImage, 
-  category, 
-  categoryUrl, 
-  locale = 'en', 
+const Soundbox = React.memo(({
+  id,
+  name,
+  authorId,
+  authorName,
+  authorImage,
+  category,
+  categoryUrl,
+  locale = 'en',
   setRefreshKey,
   url,
   link,
@@ -42,14 +43,12 @@ const Soundbox = React.memo(({
   const [loggedIn, setLogedIn] = useState(false);
 
   useEffect(() => {
-    // const unsubscribe = onAuthStateChanged(auth, (user) => {
-    //   if (user) {
-    //     setLogedIn(true)
-    //   } else {
-    //     setLogedIn(false)
-    //   }
-    // });
-    // return () => unsubscribe();
+    const authToken = localStorage.getItem('authToken');
+    if (authToken) {
+      setLogedIn(true)
+    } else {
+      setLogedIn(false)
+    }
   }, [router]);
 
   async function toggleFavourite() {
@@ -57,21 +56,16 @@ const Soundbox = React.memo(({
       setAdding(true);
       try {
         const response = await soundsAPI.toggleFavorite(id);
-        
-        if (response.data && response.data.success) {
-          // Update the favorites count in the UI
-          if (setRefreshKey) {
-            setRefreshKey(prevKey => prevKey + 1);
-          }
-          
-          // Show appropriate message based on the action
-          if (response.data.action === 'added') {
-            toast.success('Added to favourites');
-          } else if (response.data.action === 'removed') {
-            toast.success('Removed from favourites');
-          }
+
+
+        if (response.status === 201) {
+          console.log('response', response.data.message);
+          toast.success(response.data.message,{
+            position: 'bottom-left',
+          });
+          setRefreshKey(prevKey => prevKey + 1);
         } else {
-          toast.error(response.data?.message || 'Failed to update favorites');
+          toast.error(response?.message || 'Failed to update favorites');
         }
       } catch (error) {
         console.error('Error toggling favorite:', error);
@@ -80,16 +74,16 @@ const Soundbox = React.memo(({
         setAdding(false);
       }
     } else {
-      router.push('/login');
+      router.push(`/${locale}/login`);
     }
   }
 
   const generatedUrl = `https://www.soundeffectbuttons.com/${id}-${name && name.replace(/\s+/g, '-')}`;
-  
+
   const handlePlayPause = useCallback(() => {
     const soundId = isPlaying ? null : id;
     handlePlaySound(soundId);
-    
+
     if (isPlaying) {
       audioRef.current.pause();
       setIsPlaying(false);
@@ -100,19 +94,19 @@ const Soundbox = React.memo(({
         console.error('No audio URL provided');
         return;
       }
-      
+
       // Set the src if not already set
       if (audioRef.current.src !== audioUrl) {
         audioRef.current.src = audioUrl;
       }
-      
+
       // Ensure audio is loaded before playing
       if (audioRef.current.readyState < 3) {
         audioRef.current.load();
       }
-      
+
       const playPromise = audioRef.current.play();
-      
+
       if (playPromise !== undefined) {
         playPromise
           .then(() => {
@@ -158,7 +152,7 @@ const Soundbox = React.memo(({
         console.error('No audio URL provided for download');
         return;
       }
-      
+
       const response = await fetch(audioUrl);
       if (!response.ok) throw new Error('Network response was not ok');
       const blob = await response.blob();
@@ -186,7 +180,7 @@ const Soundbox = React.memo(({
         key={id}
         // data-aos="fade-up"
         className="h-[200px] flex flex-col items-center justify-between p-2 mx-auto w-full max-w-[170px] rounded-md"
-        style={{ 
+        style={{
           backgroundColor: (color && color !== 'null') ? color : '#0E7490'
         }}
       >
@@ -232,155 +226,155 @@ const Soundbox = React.memo(({
 
         <div className="flex justify-around w-full items-center px-3">
           {!visitShow ?
-          <div>
-            {
-              profileFav ?
-                <div className='cursor-pointer'>
-                  {
-                    adding ?
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        xmlnsXlink="http://www.w3.org/1999/xlink"
-                        viewBox="0 0 100 100"
-                        preserveAspectRatio="xMidYMid"
-                        width="24"
-                        height="24"
-                        style={{
-                          shapeRendering: 'auto',
-                          display: 'block',
-                          background: 'transparent',
-                        }}
-                      >
-                        <g>
-                          <circle
-                            strokeDasharray="164.93361431346415 56.97787143782138"
-                            r="35"
-                            strokeWidth="10"
-                            stroke="#fff"
-                            fill="none"
-                            cy="50"
-                            cx="50"
-                          >
-                            <animateTransform
-                              keyTimes="0;1"
-                              values="0 50 50;360 50 50"
-                              dur="1s"
-                              repeatCount="indefinite"
-                              type="rotate"
-                              attributeName="transform"
-                            />
-                          </circle>
-                        </g>
-                      </svg> :
-                      <svg onClick={toggleFavourite} xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#E82850"><path d="m480-120-58-52q-101-91-167-157T150-447.5Q111-500 95.5-544T80-634q0-94 63-157t157-63q52 0 99 22t81 62q34-40 81-62t99-22q94 0 157 63t63 157q0 46-15.5 90T810-447.5Q771-395 705-329T538-172l-58 52Z" /></svg>
+            <div>
+              {
+                profileFav ?
+                  <div className='cursor-pointer'>
+                    {
+                      adding ?
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          xmlnsXlink="http://www.w3.org/1999/xlink"
+                          viewBox="0 0 100 100"
+                          preserveAspectRatio="xMidYMid"
+                          width="24"
+                          height="24"
+                          style={{
+                            shapeRendering: 'auto',
+                            display: 'block',
+                            background: 'transparent',
+                          }}
+                        >
+                          <g>
+                            <circle
+                              strokeDasharray="164.93361431346415 56.97787143782138"
+                              r="35"
+                              strokeWidth="10"
+                              stroke="#fff"
+                              fill="none"
+                              cy="50"
+                              cx="50"
+                            >
+                              <animateTransform
+                                keyTimes="0;1"
+                                values="0 50 50;360 50 50"
+                                dur="1s"
+                                repeatCount="indefinite"
+                                type="rotate"
+                                attributeName="transform"
+                              />
+                            </circle>
+                          </g>
+                        </svg> :
+                        <svg onClick={toggleFavourite} xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#E82850"><path d="m480-120-58-52q-101-91-167-157T150-447.5Q111-500 95.5-544T80-634q0-94 63-157t157-63q52 0 99 22t81 62q34-40 81-62t99-22q94 0 157 63t63 157q0 46-15.5 90T810-447.5Q771-395 705-329T538-172l-58 52Z" /></svg>
 
-                  }
-                </div> :
-                <div className='cursor-pointer'>
-                  {
-                    adding ?
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        xmlnsXlink="http://www.w3.org/1999/xlink"
-                        viewBox="0 0 100 100"
-                        preserveAspectRatio="xMidYMid"
-                        width="24"
-                        height="24"
-                        style={{
-                          shapeRendering: 'auto',
-                          display: 'block',
-                          background: 'transparent',
-                        }}
-                      >
-                        <g>
-                          <circle
-                            strokeDasharray="164.93361431346415 56.97787143782138"
-                            r="35"
-                            strokeWidth="10"
-                            stroke="#fff"
-                            fill="none"
-                            cy="50"
-                            cx="50"
-                          >
-                            <animateTransform
-                              keyTimes="0;1"
-                              values="0 50 50;360 50 50"
-                              dur="1s"
-                              repeatCount="indefinite"
-                              type="rotate"
-                              attributeName="transform"
-                            />
-                          </circle>
-                        </g>
-                      </svg> :
-                      <svg onClick={toggleFavourite} xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e8eaed"><path d="m480-120-58-52q-101-91-167-157T150-447.5Q111-500 95.5-544T80-634q0-94 63-157t157-63q52 0 99 22t81 62q34-40 81-62t99-22q94 0 157 63t63 157q0 46-15.5 90T810-447.5Q771-395 705-329T538-172l-58 52Z" /></svg>
-                  }
-                </div>
+                    }
+                  </div> :
+                  <div className='cursor-pointer'>
+                    {
+                      adding ?
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          xmlnsXlink="http://www.w3.org/1999/xlink"
+                          viewBox="0 0 100 100"
+                          preserveAspectRatio="xMidYMid"
+                          width="24"
+                          height="24"
+                          style={{
+                            shapeRendering: 'auto',
+                            display: 'block',
+                            background: 'transparent',
+                          }}
+                        >
+                          <g>
+                            <circle
+                              strokeDasharray="164.93361431346415 56.97787143782138"
+                              r="35"
+                              strokeWidth="10"
+                              stroke="#fff"
+                              fill="none"
+                              cy="50"
+                              cx="50"
+                            >
+                              <animateTransform
+                                keyTimes="0;1"
+                                values="0 50 50;360 50 50"
+                                dur="1s"
+                                repeatCount="indefinite"
+                                type="rotate"
+                                attributeName="transform"
+                              />
+                            </circle>
+                          </g>
+                        </svg> :
+                        <svg onClick={toggleFavourite} xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e8eaed"><path d="m480-120-58-52q-101-91-167-157T150-447.5Q111-500 95.5-544T80-634q0-94 63-157t157-63q52 0 99 22t81 62q34-40 81-62t99-22q94 0 157 63t63 157q0 46-15.5 90T810-447.5Q771-395 705-329T538-172l-58 52Z" /></svg>
+                    }
+                  </div>
               }</div>
             : null}
 
-            <RWebShare
-              data={{
-                text: `Download and Share ${name && name} sound effect button`,
-                title: 'Sound Effect Buttons',
-                url: url || link,
-              }}
-            >
-              <svg
-                // onClick={() => { setShareModal(true), setCopied(false) }}
-                className='cursor-pointer'
-                xmlns="http://www.w3.org/2000/svg"
-                height="19px"
-                viewBox="0 -960 960 960"
-                width="20px"
-                fill="#e8eaed"
-              >
-                <path d="M720-80q-50 0-85-35t-35-85q0-7 1-14.5t3-13.5L322-392q-17 15-38 23.5t-44 8.5q-50 0-85-35t-35-85q0-50 35-85t85-35q23 0 44 8.5t38 23.5l282-164q-2-6-3-13.5t-1-14.5q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35q-23 0-44-8.5T638-672L356-508q2 6 3 13.5t1 14.5q0 7-1 14.5t-3 13.5l282 164q17-15 38-23.5t44-8.5q50 0 85 35t35 85q0 50-35 85t-85 35Zm0-640q17 0 28.5-11.5T760-760q0-17-11.5-28.5T720-800q-17 0-28.5 11.5T680-760q0 17 11.5 28.5T720-720ZM240-440q17 0 28.5-11.5T280-480q0-17-11.5-28.5T240-520q-17 0-28.5 11.5T200-480q0 17 11.5 28.5T240-440Zm480 280q17 0 28.5-11.5T760-200q0-17-11.5-28.5T720-240q-17 0-28.5 11.5T680-200q0 17 11.5 28.5T720-160Zm0-600ZM240-480Zm480 280Z" />
-              </svg>
-            </RWebShare>
-
-            <audio 
-              onEnded={() => setIsPlaying(false)} 
-              ref={audioRef} 
-              src={url || link}
-              crossOrigin="anonymous"
-              preload="metadata"
-              onError={(e) => {
-                console.error('Audio load error:', e);
-                console.error('Failed URL:', url || link);
-              }}
-              onLoadStart={() => console.log('Audio loading started:', url || link)}
-              onCanPlay={() => console.log('Audio can play:', url || link)}
-            ></audio>
-            {isPlaying ? (
-              <svg
-                onClick={handlePlayPause}
-                className=" cursor-pointer "
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 -960 960 960"
-                fill="#e8eaed"
-                height='32px'
-                width='32px'
-              >
-                <path d="M564-284v-392h139.5v392H564Zm-307 0v-392h139.5v392H257Z" />
-              </svg>
-            ) : (
-              <svg onClick={handlePlayPause}
-                className=" cursor-pointer"
-                xmlns="http://www.w3.org/2000/svg" height="32px" viewBox="0 -960 960 960" width="32px" fill="#e8eaed"><path d="M320-200v-560l440 280-440 280Z" /></svg>
-            )}
+          <RWebShare
+            data={{
+              text: `Download and Share ${name && name} sound effect button`,
+              title: 'Sound Effect Buttons',
+              url: url || link,
+            }}
+          >
             <svg
-              onClick={downloadSound}
-              className="cursor-pointer"
+              // onClick={() => { setShareModal(true), setCopied(false) }}
+              className='cursor-pointer'
               xmlns="http://www.w3.org/2000/svg"
-              height='24px'
-              width='24px'
+              height="19px"
               viewBox="0 -960 960 960"
+              width="20px"
               fill="#e8eaed"
             >
-              <path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z" />
+              <path d="M720-80q-50 0-85-35t-35-85q0-7 1-14.5t3-13.5L322-392q-17 15-38 23.5t-44 8.5q-50 0-85-35t-35-85q0-50 35-85t85-35q23 0 44 8.5t38 23.5l282-164q-2-6-3-13.5t-1-14.5q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35q-23 0-44-8.5T638-672L356-508q2 6 3 13.5t1 14.5q0 7-1 14.5t-3 13.5l282 164q17-15 38-23.5t44-8.5q50 0 85 35t35 85q0 50-35 85t-85 35Zm0-640q17 0 28.5-11.5T760-760q0-17-11.5-28.5T720-800q-17 0-28.5 11.5T680-760q0 17 11.5 28.5T720-720ZM240-440q17 0 28.5-11.5T280-480q0-17-11.5-28.5T240-520q-17 0-28.5 11.5T200-480q0 17 11.5 28.5T240-440Zm480 280q17 0 28.5-11.5T760-200q0-17-11.5-28.5T720-240q-17 0-28.5 11.5T680-200q0 17 11.5 28.5T720-160Zm0-600ZM240-480Zm480 280Z" />
             </svg>
-          </div>
+          </RWebShare>
+
+          <audio
+            onEnded={() => setIsPlaying(false)}
+            ref={audioRef}
+            src={url || link}
+            crossOrigin="anonymous"
+            preload="metadata"
+            onError={(e) => {
+              console.error('Audio load error:', e);
+              console.error('Failed URL:', url || link);
+            }}
+            onLoadStart={() => null}
+            onCanPlay={() => null}
+          ></audio>
+          {isPlaying ? (
+            <svg
+              onClick={handlePlayPause}
+              className=" cursor-pointer "
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 -960 960 960"
+              fill="#e8eaed"
+              height='32px'
+              width='32px'
+            >
+              <path d="M564-284v-392h139.5v392H564Zm-307 0v-392h139.5v392H257Z" />
+            </svg>
+          ) : (
+            <svg onClick={handlePlayPause}
+              className=" cursor-pointer"
+              xmlns="http://www.w3.org/2000/svg" height="32px" viewBox="0 -960 960 960" width="32px" fill="#e8eaed"><path d="M320-200v-560l440 280-440 280Z" /></svg>
+          )}
+          <svg
+            onClick={downloadSound}
+            className="cursor-pointer"
+            xmlns="http://www.w3.org/2000/svg"
+            height='24px'
+            width='24px'
+            viewBox="0 -960 960 960"
+            fill="#e8eaed"
+          >
+            <path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z" />
+          </svg>
+        </div>
       </div>
 
       {shareModal &&

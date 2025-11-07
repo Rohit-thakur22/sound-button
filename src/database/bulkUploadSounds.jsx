@@ -2,7 +2,7 @@ import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import CryptoJS from 'crypto-js';
-import { getAuth } from 'firebase/auth';
+import { getCurrentUser } from '../lib/auth';
 
 const generateSearchKeywords = (name) => {
     return name
@@ -15,16 +15,20 @@ export const bulkUploadSounds = async (files, admin, categories) => {
     try {
         const storage = getStorage();
         const soundsCollection = collection(db, 'SOUNDS');
-        const auth = getAuth();
-        const user = auth.currentUser;
+        const user = await getCurrentUser();
 
         if (!user) {
             throw new Error('User is not authenticated');
         }
 
+        const userId = user.id || user.uid || user._id;
+        if (!userId) {
+            throw new Error('User ID not found');
+        }
+
         const uploadResults = await Promise.all(
             Array.from(files).map(async (file, index) => {
-                const soundId = `${user.uid}${Date.now()}_${index}`;
+                const soundId = `${userId}${Date.now()}_${index}`;
                 const soundRef = ref(storage, `sounds/${soundId}`);
 
                 await uploadBytes(soundRef, file);

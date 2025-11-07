@@ -16,49 +16,15 @@ const LoginPage = ({ uploadCheck, locale = 'en' }) => {
     const signInWithGoogle = () => {
         try {
             // Get the API base URL from environment or use default
-            const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://sound-effect-buttons.onrender.com';
-            // Construct the redirect URI to come back to this page
-            const redirectUri = typeof window !== 'undefined'
-                ? `${window.location.origin}/${locale}/login${uploadCheck ? '?upload=true' : ''}`
-                : '';
-
-            // Build the auth URL with redirect_uri parameter
-            const authUrl = `${apiBaseUrl}/auth/google${redirectUri ? `?redirect_uri=${encodeURIComponent(redirectUri)}` : ''}`;
-
-            // Redirect to the API endpoint which will handle OAuth
-            window.location.href = authUrl;
+            const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://sound-effect-buttons-7cv7.onrender.com';
+            
+            // Simply redirect to the API endpoint - backend will handle OAuth and redirect back
+            window.location.href = `${apiBaseUrl}/auth/google`;
         } catch (error) {
             console.error('Error signing in with Google:', error);
             alert('Sign-in failed. Please try again.');
         }
     };
-
-    useEffect(() => {
-        // Check for authentication callback (token in URL params or localStorage)
-        if (typeof window === 'undefined') return;
-
-        // Get URL params directly from window.location
-        const urlParams = new URLSearchParams(window.location.search);
-        const token = urlParams.get('token') || searchParams?.get('token') || localStorage.getItem('authToken');
-        const userName = urlParams.get('userName') || searchParams?.get('userName') || localStorage.getItem('userName');
-        const userImage = urlParams.get('userImage') || searchParams?.get('userImage') || localStorage.getItem('userImage');
-
-        // If we have a token from URL params, store it and redirect
-        if (urlParams.get('token')) {
-            localStorage.setItem('authToken', urlParams.get('token'));
-            if (urlParams.get('userName')) {
-                localStorage.setItem('userName', urlParams.get('userName'));
-            }
-            if (urlParams.get('userImage')) {
-                localStorage.setItem('userImage', urlParams.get('userImage'));
-            }
-
-            // Clean up URL and redirect
-            const cleanUrl = window.location.pathname + (uploadCheck ? '?upload=true' : '');
-            window.history.replaceState({}, '', cleanUrl);
-            router.push(uploadCheck ? `/${locale}/profile?upload=true` : `/${locale}`);
-        }
-    }, [router, uploadCheck, locale, searchParams]);
 
     return (
         <>
