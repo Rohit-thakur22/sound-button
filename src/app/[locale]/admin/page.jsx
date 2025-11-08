@@ -4,7 +4,7 @@ import { Dropdown } from "flowbite-react";
 import { debounce } from "lodash";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import DataTable from "react-data-table-component";
 import { toast, ToastContainer } from "react-toastify";
@@ -23,6 +23,8 @@ import { useQueryClient } from "@tanstack/react-query";
 
 const Admin = () => {
   const router = useRouter();
+  const params = useParams();
+  const locale = params?.locale || 'en';
   const queryClient = useQueryClient();
   const [refreshKey, setRefreshKey] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -33,11 +35,14 @@ const Admin = () => {
   const [usersSearchTerm, setUsersSearchTerm] = useState("");
   const [usersLocalSearch, setUsersLocalSearch] = useState("");
   const [adminCheck, setAdminCheck] = useState(null);
+  const [hasChecked, setHasChecked] = useState(false);
 
   // Check for admin token only on client side
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setAdminCheck(localStorage.getItem('adminAuthToken'));
+      const token = localStorage.getItem('adminAuthToken');
+      setAdminCheck(token);
+      setHasChecked(true);
     }
   }, []);
 
@@ -181,18 +186,14 @@ const Admin = () => {
 
  // Redirect to login if not authenticated (only after client-side check)
  useEffect(() => {
-   if (adminCheck === null) return; // Still checking
+   if (!hasChecked) return; // Still checking
    if (!adminCheck) {
-     router.replace("/en/admin/login");
+     router.replace(`/${locale}/admin/login`);
    }
- }, [adminCheck, router]);
+ }, [adminCheck, hasChecked, router, locale]);
 
- // Show nothing while checking authentication
- if (adminCheck === null) {
-   return null;
- }
 
- if (!adminCheck) {
+ if (!hasChecked || !adminCheck) {
    return null; // Will redirect via useEffect
  }
 
