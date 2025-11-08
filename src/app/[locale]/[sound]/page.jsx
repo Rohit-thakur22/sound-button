@@ -1,6 +1,7 @@
 import Sound from "@/components/pages/SoundPage";
 import { soundsAPI } from "@/lib/apiServices";
 import { Suspense } from "react";
+import Loading from "@/components/loading/Loading"
 
 // Loading component
 function LoadingSpinner() {
@@ -15,8 +16,11 @@ function LoadingSpinner() {
 }
 
 export default async function Page({ params }) {
+  
   const { sound, locale } = params;
   const [id, ...nameParts] = sound.split('-');
+  console.log('id', id);
+  console.log('nameParts', nameParts);
   
   try {
     const response = await soundsAPI.getSoundById(id);
@@ -25,6 +29,7 @@ export default async function Page({ params }) {
     if (!soundData) {
       throw new Error('Sound data not found');
     }
+    console.log('soundData', soundData);
     
     const canonicalUrl = `https://www.soundeffectbuttons.com/${id}-${encodeURIComponent(soundData.name && soundData.name.replace(/\s+/g, '-'))}`;
 
@@ -38,7 +43,7 @@ export default async function Page({ params }) {
             content={"Download, play and share free " + soundData.name + " sound effect button, viral your soundboard sounds to be featured on world's leaderboard."}
           />
         </head>
-        <Suspense fallback={<LoadingSpinner />}>
+        <Suspense fallback={<Loading />}>
           <Sound slug={id} frameUrl={sound} soundObj={soundData} locale={locale} />
         </Suspense>
       </>

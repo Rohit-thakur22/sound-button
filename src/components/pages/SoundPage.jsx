@@ -10,15 +10,13 @@ import "react-toastify/dist/ReactToastify.css";
 import { soundsAPI } from "../../lib/apiServices";
 import Soundbox from "@/components/Soundbox";
 import { useSearchParams } from "next/navigation";
-import { getAllFavouriteSounds } from "../../database/getAllFavouriteSounds";
 import { transformSoundsArray } from "../../lib/dataTransformers";
 import { RWebShare } from "react-web-share";
 import { useRouter } from "next/navigation";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "../../../firebase";
 import FixedAds from "../adsbygoogle/FixedAds";
 import Ads from "../adsbygoogle/Ads";
 import MobileAd from "../adsbygoogle/MobileAd";
+import { LoadingInline } from "@/components/loading/Loading";
 
 export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
   const { t } = useTranslation();
@@ -36,6 +34,9 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
   const [currentLimit, setCurrentLimit] = useState(40);
   const [totalCount, setTotalCount] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [isLoadingSimilarSounds, setIsLoadingSimilarSounds] = useState(!!soundObj);
+
+  const isValidColor = (color) => CSS.supports("color", color);
 
   // Create displayedSounds like Catalog.jsx
   const displayedSounds = useMemo(
@@ -59,16 +60,6 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
 
   const id = slug;
 
-  useEffect(() => {
-    // const unsubscribe = onAuthStateChanged(auth, (user) => {
-    //   if (user) {
-    //     setLogedIn(true);
-    //   } else {
-    //     setLogedIn(false);
-    //   }
-    // });
-    // return () => unsubscribe();
-  }, [router]);
 
   async function handleShowMoreSounds() {
     try {
@@ -136,23 +127,8 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
     }
   }
 
-  async function getherFavSounds() {
-    if (logedIn) {
-      const favs = await getAllFavouriteSounds();
-      const sound =
-        favs.sounds &&
-        favs.sounds.find((sound) => sound.uid === soundObj.uid);
-      if (sound) {
-        setFavourited(true);
-      }
-    }
-  }
-
-  useEffect(() => {
-    getherFavSounds();
-  }, [logedIn]);
-
   async function getherSimilarSounds() {
+    setIsLoadingSimilarSounds(true);
     if (soundObj && soundObj.categories && soundObj.categories.length > 0) {
       try {
         // Get the first category from the sound object
@@ -192,6 +168,8 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
         } else {
           setSimilarSounds([]);
         }
+      } finally {
+        setIsLoadingSimilarSounds(false);
       }
     } else if (soundObj.name) {
       // Fallback to search by name if no categories
@@ -207,7 +185,11 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
       } catch (error) {
         console.error('Error loading similar sounds by name:', error);
         setSimilarSounds([]);
+      } finally {
+        setIsLoadingSimilarSounds(false);
       }
+    } else {
+      setIsLoadingSimilarSounds(false);
     }
   }
 
@@ -216,7 +198,11 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
   };
 
   useEffect(() => {
-    getherSimilarSounds();
+    if (soundObj) {
+      getherSimilarSounds();
+    } else {
+      setIsLoadingSimilarSounds(false);
+    }
   }, [soundObj]);
 
   const handlePlayPause = () => {
@@ -314,8 +300,7 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
     navigator.clipboard.writeText(shareUrl);
     toast.success('Audio URL copied to clipboard!');
   }
-
-
+console.log('displayedSounds', displayedSounds);
   return (
     <div className={`${theme && "dark"}`}>
       <ToastContainer
@@ -384,10 +369,10 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
             <div className="flex flex-col ">
               <div
                 style={{
-                  backgroundColor: soundObj && soundObj.color,
+                  backgroundColor: soundObj.color && isValidColor(soundObj.color) ? soundObj.color : undefined,
                 }}
                 data-aos="fade-in"
-                className=" pb-4 gap-5 flex flex-col items-center justify-between p-5 mx-auto min-w-[250px] max-w-[350px] rounded-md"
+                className={`pb-4 gap-5 flex flex-col items-center justify-between p-5 mx-auto min-w-[250px] max-w-[350px] rounded-md ${soundObj.color && isValidColor(soundObj.color) ? `bg-[${soundObj.color}]` : 'bg-[#0E7490]'}`}
               >
                 <div className="flex flex-col gap-2">
                   <h1 className="text-center text-2xl text-[#E7E7EA] font-semibold">
@@ -541,16 +526,17 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
               </div>
 
               <div className="flex flex-wrap gap-2 mt-5 mx-auto max-w-[650px]">
-                {soundObj &&
+                {soundObj && soundObj.tags?.length > 0 &&
                   soundObj.tags?.map((tag, index) => (
                     <div
                       key={index}
                       className="bg-blue-100 rounded-sm text-blue-800 px-2 py-1"
                     >
-                      {tag}
+                      {tag?.name}
                     </div>
                   ))}
               </div>
+
             </div>
             <div className="z-30 flex flex-col items-center gap-5 justify-center">
               <div className="border-b-2 text-gray-600 dark:text-gray-300 border-gray-300 w-full">
@@ -563,6 +549,9 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
                   soundObj.name +
                   " sound effect button, viral your soundboard sounds to be featured on world's leaderboard."}
               </div>
+             {soundObj?.author?.name && <p className="text-gray-600 dark:text-gray-300 text-sm">
+                Sound Uploaded by: {soundObj?.author?.name}
+              </p>}
               <div className="grid w-full gap-5 grid-cols-1 items-center lg:grid-cols-2">
                 {favourited ? (
                   <button
@@ -699,7 +688,11 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
         </div>
 
         <div className="md:w-[90%] xl:w-[70%] grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 my-8 gap-5">
-          {displayedSounds &&
+          {isLoadingSimilarSounds ? (
+            <div className="col-span-full flex justify-center items-center py-20">
+              <LoadingInline size="default" />
+            </div>
+          ) : displayedSounds && displayedSounds.length > 0 ? (
             displayedSounds.map((sound) => {
               return (
                 <Soundbox
@@ -719,7 +712,12 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
                   handlePlaySound={handlePlaySound}
                 />
               );
-            })}
+            })
+          ) : (
+            <div className="col-span-full flex justify-center items-center py-20">
+              <p className="text-gray-600 dark:text-gray-400">No similar sounds found.</p>
+            </div>
+          )}
         </div>
 
         {/* Show More Button */}

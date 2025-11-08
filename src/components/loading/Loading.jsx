@@ -9,7 +9,7 @@ import { ThemeContext } from '@/components/context/theme-context';
  */
 const Loading = ({ 
   size = 'default',
-  message = 'Loading sounds...',
+  message = 'Syncing sound waves...',
   showMessage = true 
 }) => {
   const { theme } = useContext(ThemeContext);
@@ -278,49 +278,120 @@ const Loading = ({
   );
 };
 
-// Compact inline version
-export const LoadingInline = ({ size = 'small', className = '' }) => {
+// Compact inline version - Enhanced with smooth Vercel-style animations
+export const LoadingInline = ({ size = 'small', className = '', message = 'Syncing sound waves...' }) => {
   const { theme } = useContext(ThemeContext);
   const isDark = theme === 'dark';
 
-  const heightValues = [16, 28, 40, 52, 40, 28, 40, 52];
+  const sizeConfig = {
+    small: {
+      container: 'w-20 h-20',
+      orb: 'w-14 h-14',
+      bar: 'w-1.5',
+      heights: [14, 24, 34, 44, 34, 24, 34, 44],
+      messageSize: 'text-sm'
+    },
+    default: {
+      container: 'w-32 h-32',
+      orb: 'w-20 h-20',
+      bar: 'w-2',
+      heights: [20, 36, 52, 68, 52, 36, 52, 68],
+      messageSize: 'text-base'
+    },
+    large: {
+      container: 'w-40 h-40',
+      orb: 'w-24 h-24',
+      bar: 'w-2.5',
+      heights: [24, 44, 64, 84, 64, 44, 64, 84],
+      messageSize: 'text-lg'
+    }
+  };
+
+  const config = sizeConfig[size] || sizeConfig.small;
+  const delays = Array.from({ length: 8 }, (_, i) => `${i * 0.1}s`);
 
   return (
-    <div className={`flex items-center justify-center ${className}`}>
-      <div className="relative">
-        {/* Rotating center */}
-        <div 
-          className="absolute inset-0 rounded-full bg-gradient-to-br from-[#0E7490] to-[#00A4FF] opacity-60"
-          style={{
-            width: '40px',
-            height: '40px',
-            animation: 'rotate 2s linear infinite',
-            boxShadow: '0 0 15px rgba(14, 116, 144, 0.5)'
-          }}
-        />
+    <div className={`flex flex-col items-center justify-center ${className}`}>
+      <div className={`relative ${config.container} flex items-center justify-center mb-4`}>
+        {/* Vercel-style Smooth Gradient Orb */}
+        <div className={`absolute ${config.orb}`}>
+          <div 
+            className="absolute inset-0 rounded-full"
+            style={{
+              background: `conic-gradient(from 0deg, 
+                ${isDark ? '#0E7490' : '#0E7490'}, 
+                ${isDark ? '#00A4FF' : '#00A4FF'}, 
+                ${isDark ? '#1f4b58' : '#1f4b58'}, 
+                ${isDark ? '#0E7490' : '#0E7490'})`,
+              animation: 'vercelSpin 3s linear infinite',
+              filter: 'blur(1px)',
+              opacity: isDark ? 0.6 : 0.5
+            }}
+          />
+          <div 
+            className="absolute inset-1 rounded-full bg-white dark:bg-[#212D3D]"
+          />
+          <div 
+            className="absolute inset-2 rounded-full"
+            style={{
+              background: `radial-gradient(circle at 30% 30%, 
+                ${isDark ? 'rgba(14, 116, 144, 0.4)' : 'rgba(14, 116, 144, 0.3)'}, 
+                transparent 70%)`,
+              animation: 'vercelPulse 2s ease-in-out infinite'
+            }}
+          />
+        </div>
         
-        {/* Audio bars */}
-        <div className="flex items-end justify-center gap-1 w-20 h-20 relative">
+        {/* Vercel-style Smooth Audio Visualizer Bars */}
+        <div className={`flex items-end justify-center gap-1 relative z-10`}>
           {[...Array(8)].map((_, index) => {
-            const delays = ['0s', '0.15s', '0.3s', '0.45s', '0.6s', '0.75s', '0.9s', '1.05s'];
-            
             return (
               <div
                 key={index}
-                className="w-1.5 rounded-full"
+                className={`${config.bar} rounded-full relative`}
                 style={{
-                  background: `linear-gradient(to top, #0E7490, #00A4FF)`,
-                  animation: `growShrink 1.2s ease-in-out infinite`,
+                  height: `${config.heights[index]}px`,
+                  background: `linear-gradient(to top, 
+                    ${isDark ? '#0E7490' : '#0E7490'}, 
+                    ${isDark ? '#00A4FF' : '#00A4FF'})`,
+                  animation: `vercelBarGrow 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite`,
                   animationDelay: delays[index],
                   transformOrigin: 'bottom center',
-                  height: `${heightValues[index]}px`,
-                  boxShadow: '0 0 8px rgba(14, 116, 144, 0.6)'
+                  opacity: 0.8
                 }}
-              />
+              >
+                {/* Smooth highlight */}
+                <div 
+                  className="absolute top-0 left-0 right-0 h-1/3 rounded-full"
+                  style={{
+                    background: isDark
+                      ? 'linear-gradient(to bottom, rgba(255, 255, 255, 0.3), transparent)'
+                      : 'linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent)'
+                  }}
+                />
+              </div>
             );
           })}
         </div>
       </div>
+      
+      {/* Loading Message */}
+      {message && (
+        <div className="text-center">
+          <p 
+            className={`${config.messageSize} font-medium text-gray-700 dark:text-gray-300`}
+            style={{
+              letterSpacing: '0.3px'
+            }}
+          >
+            {message}
+            <span 
+              className="inline-block w-0.5 h-4 bg-[#0E7490] ml-1.5 align-middle"
+              style={{ animation: 'blink 1.2s infinite' }}
+            />
+          </p>
+        </div>
+      )}
     </div>
   );
 };

@@ -41,6 +41,7 @@ const Soundbox = React.memo(({
   const [copied, setCopied] = useState(false)
   const [adding, setAdding] = useState(false);
   const [loggedIn, setLogedIn] = useState(false);
+  const isValidColor = (color) => CSS.supports("color", color);
 
   useEffect(() => {
     const authToken = localStorage.getItem('authToken');
@@ -60,10 +61,10 @@ const Soundbox = React.memo(({
 
         if (response.status === 201) {
           console.log('response', response.data.message);
-          toast.success(response.data.message,{
+          toast.success(response.data.message, {
             position: 'bottom-left',
           });
-          setRefreshKey(prevKey => prevKey + 1);
+          setRefreshKey && setRefreshKey(prevKey => prevKey + 1);
         } else {
           toast.error(response?.message || 'Failed to update favorites');
         }
@@ -179,9 +180,9 @@ const Soundbox = React.memo(({
       <div
         key={id}
         // data-aos="fade-up"
-        className="h-[200px] flex flex-col items-center justify-between p-2 mx-auto w-full max-w-[170px] rounded-md"
+        className={`h-[200px] flex flex-col items-center justify-between p-2 mx-auto w-full max-w-[170px] rounded-md ${color && isValidColor(color) ? `bg-[${color}]` : 'bg-[#0E7490]'}`}
         style={{
-          backgroundColor: (color && color !== 'null') ? color : '#0E7490'
+          backgroundColor: color && isValidColor(color) ? color : '#0E7490'
         }}
       >
         <Link
