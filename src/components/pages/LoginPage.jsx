@@ -16,7 +16,7 @@ const LoginPage = ({ uploadCheck, locale = 'en' }) => {
     const signInWithGoogle = () => {
         try {
             // Get the API base URL from environment or use default
-            const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://sound-effect-buttons-7cv7.onrender.com';
+            const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://sound-effect-buttons-xi.vercel.app';
             
             // Simply redirect to the API endpoint - backend will handle OAuth and redirect back
             window.location.href = `${apiBaseUrl}/auth/google`;

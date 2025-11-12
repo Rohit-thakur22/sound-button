@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'https://sound-effect-buttons-7cv7.onrender.com',
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'https://sound-effect-buttons-xi.vercel.app',
   timeout: 30000, // 30 seconds timeout for better reliability
   headers: {
     'Content-Type': 'application/json',
