@@ -41,6 +41,7 @@ const Soundbox = React.memo(({
   const [copied, setCopied] = useState(false)
   const [adding, setAdding] = useState(false);
   const [loggedIn, setLogedIn] = useState(false);
+  const isValidColor = (color) => CSS.supports("color", color);
 
   useEffect(() => {
     const authToken = localStorage.getItem('authToken');
@@ -60,10 +61,10 @@ const Soundbox = React.memo(({
 
         if (response.status === 201) {
           console.log('response', response.data.message);
-          toast.success(response.data.message,{
+          toast.success(response.data.message, {
             position: 'bottom-left',
           });
-          setRefreshKey(prevKey => prevKey + 1);
+          setRefreshKey && setRefreshKey(prevKey => prevKey + 1);
         } else {
           toast.error(response?.message || 'Failed to update favorites');
         }
@@ -96,46 +97,119 @@ const Soundbox = React.memo(({
       }
 
       // Set the src if not already set
-      if (audioRef.current.src !== audioUrl) {
+      if (!audioRef.current.src || audioRef.current.src !== audioUrl) {
         audioRef.current.src = audioUrl;
       }
 
-      // Ensure audio is loaded before playing
-      if (audioRef.current.readyState < 3) {
-        audioRef.current.load();
-      }
+      // Function to attempt playing audio
+      const attemptPlay = () => {
+        // Check if audio is ready to play
+        // readyState: 0=HAVE_NOTHING, 1=HAVE_METADATA, 2=HAVE_CURRENT_DATA, 3=HAVE_FUTURE_DATA, 4=HAVE_ENOUGH_DATA
+        if (audioRef.current.readyState >= 2) {
+          const playPromise = audioRef.current.play();
 
-      const playPromise = audioRef.current.play();
+          if (playPromise !== undefined) {
+            playPromise
+              .then(() => {
+                setIsPlaying(true);
+                console.log('Audio playing successfully');
+              })
+              .catch((error) => {
+                console.error('Error playing audio:', error);
+                console.error('Audio URL:', audioUrl);
+                setIsPlaying(false);
+              });
+          }
+        } else {
+          // Audio not ready, wait for it to load
+          audioRef.current.load();
+          
+          // Wait for audio to be ready
+          const onCanPlay = () => {
+            const playPromise = audioRef.current.play();
+            if (playPromise !== undefined) {
+              playPromise
+                .then(() => {
+                  setIsPlaying(true);
+                  console.log('Audio playing successfully after load');
+                })
+                .catch((error) => {
+                  console.error('Error playing audio after load:', error);
+                  setIsPlaying(false);
+                });
+            }
+            audioRef.current.removeEventListener('canplay', onCanPlay);
+            audioRef.current.removeEventListener('canplaythrough', onCanPlay);
+          };
 
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            setIsPlaying(true);
-            console.log('Audio playing successfully');
-          })
-          .catch((error) => {
-            console.error('Error playing audio:', error);
-            console.error('Audio URL:', url);
-            setIsPlaying(false);
-          });
+          audioRef.current.addEventListener('canplay', onCanPlay);
+          audioRef.current.addEventListener('canplaythrough', onCanPlay);
+        }
+      };
+
+      // If audio element exists, attempt to play
+      if (audioRef.current) {
+        attemptPlay();
       }
     }
-  }, [isPlaying, url, link, audioRef]);
+  }, [isPlaying, url, link, id, handlePlaySound]);
+
+  // Initialize audio element when component mounts or URL changes
+  useEffect(() => {
+    const audioUrl = url || link;
+    if (audioRef.current && audioUrl) {
+      // Set src if not already set or if URL changed
+      if (!audioRef.current.src || audioRef.current.src !== audioUrl) {
+        audioRef.current.src = audioUrl;
+        // Preload the audio to ensure it's ready when user clicks
+        audioRef.current.load();
+      }
+    }
+  }, [url, link]);
 
   useEffect(() => {
     if (isCurrentlyPlaying) {
       const audioUrl = url || link;
       if (audioRef.current && audioUrl) {
-        audioRef.current.src = audioUrl;
-        const playPromise = audioRef.current.play();
-        if (playPromise !== undefined) {
-          playPromise
-            .then(() => setIsPlaying(true))
-            .catch((error) => {
-              console.error('Error playing audio in useEffect:', error);
-              setIsPlaying(false);
-            });
+        // Set src if not already set
+        if (!audioRef.current.src || audioRef.current.src !== audioUrl) {
+          audioRef.current.src = audioUrl;
         }
+
+        // Function to attempt playing
+        const attemptPlay = () => {
+          if (audioRef.current.readyState >= 2) {
+            const playPromise = audioRef.current.play();
+            if (playPromise !== undefined) {
+              playPromise
+                .then(() => setIsPlaying(true))
+                .catch((error) => {
+                  console.error('Error playing audio in useEffect:', error);
+                  setIsPlaying(false);
+                });
+            }
+          } else {
+            // Wait for audio to be ready
+            audioRef.current.load();
+            const onCanPlay = () => {
+              const playPromise = audioRef.current.play();
+              if (playPromise !== undefined) {
+                playPromise
+                  .then(() => setIsPlaying(true))
+                  .catch((error) => {
+                    console.error('Error playing audio after load in useEffect:', error);
+                    setIsPlaying(false);
+                  });
+              }
+              audioRef.current.removeEventListener('canplay', onCanPlay);
+              audioRef.current.removeEventListener('canplaythrough', onCanPlay);
+            };
+            audioRef.current.addEventListener('canplay', onCanPlay);
+            audioRef.current.addEventListener('canplaythrough', onCanPlay);
+          }
+        };
+
+        attemptPlay();
       }
     } else {
       if (audioRef.current) {
@@ -179,9 +253,9 @@ const Soundbox = React.memo(({
       <div
         key={id}
         // data-aos="fade-up"
-        className="h-[200px] flex flex-col items-center justify-between p-2 mx-auto w-full max-w-[170px] rounded-md"
+        className={`h-[200px] flex flex-col items-center justify-between p-2 mx-auto w-full max-w-[170px] rounded-md ${color && isValidColor(color) ? `bg-[${color}]` : 'bg-[#0E7490]'}`}
         style={{
-          backgroundColor: (color && color !== 'null') ? color : '#0E7490'
+          backgroundColor: color && isValidColor(color) ? color : '#0E7490'
         }}
       >
         <Link
@@ -334,7 +408,10 @@ const Soundbox = React.memo(({
           </RWebShare>
 
           <audio
-            onEnded={() => setIsPlaying(false)}
+            onEnded={() => {
+              setIsPlaying(false);
+              handlePlaySound(null);
+            }}
             ref={audioRef}
             src={url || link}
             crossOrigin="anonymous"
@@ -342,9 +419,17 @@ const Soundbox = React.memo(({
             onError={(e) => {
               console.error('Audio load error:', e);
               console.error('Failed URL:', url || link);
+              setIsPlaying(false);
             }}
-            onLoadStart={() => null}
-            onCanPlay={() => null}
+            onLoadStart={() => {
+              // Audio loading started
+            }}
+            onCanPlay={() => {
+              // Audio can start playing
+            }}
+            onLoadedData={() => {
+              // Audio data loaded
+            }}
           ></audio>
           {isPlaying ? (
             <svg

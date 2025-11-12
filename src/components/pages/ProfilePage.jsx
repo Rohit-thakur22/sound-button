@@ -28,6 +28,18 @@ const ProfilePage = ({ uploadCheck, creatorsdata, locale = 'en' }) => {
     const [favouriteList, setFavouriteList] = useState([])
     const [loadingSounds, setLoadingSounds] = useState(false)
 
+    // Helper function to normalize URLs - ensures they have a protocol
+    const normalizeUrl = (url) => {
+        if (!url || url.trim() === '' || url === '#') return '#';
+        const trimmedUrl = url.trim();
+        // If URL already has a protocol, return as is
+        if (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://')) {
+            return trimmedUrl;
+        }
+        // Otherwise, prepend https://
+        return `https://${trimmedUrl}`;
+    }
+
     useEffect(() => {
         // Get user from localStorage (set after verify-user)
         const authToken = localStorage.getItem('authToken');
@@ -57,9 +69,9 @@ const ProfilePage = ({ uploadCheck, creatorsdata, locale = 'en' }) => {
     async function getUserDetails(id) {
         const userDetails = await getUserById(id)
         console.log('userDetails', userDetails)
-        setInstagram(userDetails.instagram)
-        setDiscord(userDetails.discord)
-        setYoutube(userDetails.youtube)
+        setInstagram(userDetails.instagramLink)
+        setDiscord(userDetails.discordLink)
+        setYoutube(userDetails.youtubeLink)
         setUserData(userDetails)
 
     }
@@ -101,7 +113,38 @@ const ProfilePage = ({ uploadCheck, creatorsdata, locale = 'en' }) => {
     }, [user, refreshKey])
 
     async function updateSocials(instagram, discord, youtube) {
-        const result = await userSocialUpdate(instagram, discord, youtube)
+        try {
+            await userSocialUpdate(instagram, discord, youtube);
+            
+            // Update local state with new values
+            setInstagram(instagram);
+            setDiscord(discord);
+            setYoutube(youtube);
+            
+            // Refresh user data to get updated social links from server
+            if (user && user.id) {
+                getUserDetails(user.id);
+            }
+            
+            // Show success message
+            Swal.fire({
+                icon: 'success',
+                title: 'Success!',
+                text: 'Your social links have been updated successfully.',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        } catch (error) {
+            console.error('Error updating social links:', error);
+            
+            // Show error message
+            Swal.fire({
+                icon: 'error',
+                title: 'Update Failed',
+                text: error.response?.data?.message || error.message || 'Failed to update social links. Please try again.',
+                confirmButtonText: 'OK'
+            });
+        }
     }
 
     function showSocialModal() {
@@ -121,19 +164,30 @@ const ProfilePage = ({ uploadCheck, creatorsdata, locale = 'en' }) => {
                 const instagramValue = document.getElementById('instagram').value;
                 const discordValue = document.getElementById('discord').value;
                 const youtubeValue = document.getElementById('youtube').value;
-                setInstagram(instagramValue)
-                setDiscord(discordValue)
-                setYoutube(youtubeValue)
                 return {
                     instagram: instagramValue,
                     discord: discordValue,
                     youtube: youtubeValue,
                 };
             },
-        }).then((result) => {
+        }).then(async (result) => {
             if (result.isConfirmed) {
                 const { instagram, discord, youtube } = result.value;
-                updateSocials(instagram, discord, youtube)
+                
+                // Show loading state
+                Swal.fire({
+                    title: 'Updating...',
+                    text: 'Please wait while we update your social links.',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                // Update social links
+                await updateSocials(instagram, discord, youtube);
             }
         });
     }
@@ -334,7 +388,7 @@ const ProfilePage = ({ uploadCheck, creatorsdata, locale = 'en' }) => {
                                 <h4 className='mt-2'>Boost your visibility and popularity</h4>
                                 <h4 className=''>Add your social media links</h4>
                                 <div className='flex gap-2 justify-center mt-3'>
-                                    <Link href={instagram || '#'} target="_blank">
+                                    <a href={normalizeUrl(instagram)} target="_blank" rel="noopener noreferrer">
                                         <svg
                                             className='cursor-pointer'
                                             xmlns="http://www.w3.org/2000/svg"
@@ -348,8 +402,8 @@ const ProfilePage = ({ uploadCheck, creatorsdata, locale = 'en' }) => {
                                                 fill="#fff"
                                             />
                                         </svg>
-                                    </Link>
-                                    <Link href={discord || '#'} target="_blank">
+                                    </a>
+                                    <a href={normalizeUrl(discord)} target="_blank" rel="noopener noreferrer">
                                         <svg className='cursor-pointer' xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 1024 1024">
                                             <circle cx="512" cy="512" r="512" fill={(userData && userData.discord) || discord ? "#5865f2" : "#808080"} />
                                             <path
@@ -357,15 +411,15 @@ const ProfilePage = ({ uploadCheck, creatorsdata, locale = 'en' }) => {
                                                 fill="#fff"
                                             />
                                         </svg>
-                                    </Link>
-                                    <Link href={youtube || '#'} target="_blank">
+                                    </a>
+                                    <a href={normalizeUrl(youtube)} target="_blank" rel="noopener noreferrer">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="35" height="35" viewBox="0 0 72 72">
                                             <g fill={(userData && userData.youtube) || youtube ? "#FF0000" : "#808080"} fill-rule="evenodd">
                                                 <path d="M36,72 L36,72 C55.882251,72 72,55.882251 72,36 L72,36 C72,16.117749 55.882251,-3.65231026e-15 36,0 L36,0 C16.117749,3.65231026e-15 -2.4348735e-15,16.117749 0,36 L0,36 C2.4348735e-15,55.882251 16.117749,72 36,72 Z" fill={(userData && userData.youtube) || youtube ? "#FF0000" : "#808080"} />
                                                 <path d="M31.044,42.269916 L31.0425,28.6877416 L44.0115,35.5022437 L31.044,42.269916 Z M59.52,26.3341627 C59.52,26.3341627 59.0505,23.003199 57.612,21.5363665 C55.7865,19.610299 53.7405,19.6012352 52.803,19.4894477 C46.086,19 36.0105,19 36.0105,19 L35.9895,19 C35.9895,19 25.914,19 19.197,19.4894477 C18.258,19.6012352 16.2135,19.610299 14.3865,21.5363665 C12.948,23.003199 12.48,26.3341627 12.48,26.3341627 C12.48,26.3341627 12,30.2467232 12,34.1577731 L12,37.8256098 C12,41.7381703 12.48,45.6492202 12.48,45.6492202 C12.48,45.6492202 12.948,48.9801839 14.3865,50.4470165 C16.2135,52.3730839 18.612,52.3126583 19.68,52.5135736 C23.52,52.8851913 36,53 36,53 C36,53 46.086,52.9848936 52.803,52.4954459 C53.7405,52.3821478 55.7865,52.3730839 57.612,50.4470165 C59.0505,48.9801839 59.52,45.6492202 59.52,45.6492202 C59.52,45.6492202 60,41.7381703 60,37.8256098 L60,34.1577731 C60,30.2467232 59.52,26.3341627 59.52,26.3341627 L59.52,26.3341627 Z" fill="#FFF" />
                                             </g>
                                         </svg>
-                                    </Link>
+                                    </a>
                                     <div onClick={showSocialModal} className='flex cursor-pointer items-center justify-center w-[35px] h-[35px] rounded-full bg-gray-700'>
                                         <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e8eaed"><path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z" /></svg>
                                     </div>
@@ -394,7 +448,7 @@ const ProfilePage = ({ uploadCheck, creatorsdata, locale = 'en' }) => {
                 <div className='w-full mt-8'>
                     {loadingSounds ? (
                         <div className='flex items-center justify-center py-20'>
-                            <Loading size="default" message="Loading sounds..." />
+                            <Loading size="default" message="Syncing sound waves..." />
                         </div>
                     ) : (
                         (() => {
