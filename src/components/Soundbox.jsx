@@ -1,18 +1,15 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import Link from 'next/link';
-import { useTranslation } from "react-i18next";
-import fb from '../assets/images/social/fb.png'
-import twitter from '../assets/images/social/twitter.png'
-import whatsapp from '../assets/images/social/whatsapp.png'
-import Image from 'next/image';
-import { RWebShare } from "react-web-share";
-import { useRouter } from 'next/navigation'
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../../firebase';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import { soundsAPI } from '@/lib/apiServices';
-import { ResponseCookies } from 'next/dist/compiled/@edge-runtime/cookies';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from "react-i18next";
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { RWebShare } from "react-web-share";
+import fb from '../assets/images/social/fb.png';
+import twitter from '../assets/images/social/twitter.png';
+import whatsapp from '../assets/images/social/whatsapp.png';
 
 const Soundbox = React.memo(({
   id,
@@ -36,6 +33,8 @@ const Soundbox = React.memo(({
   const audioRef = useRef(null);
   const router = useRouter()
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [shareModal, setShareModal] = useState(false)
   const [isBoxVisible, setIsBoxVisible] = useState(false);
   const [copied, setCopied] = useState(false)
@@ -88,6 +87,7 @@ const Soundbox = React.memo(({
     if (isPlaying) {
       audioRef.current.pause();
       setIsPlaying(false);
+      setIsLoading(false);
     } else {
       // Check if URL exists (support both url and link props for backward compatibility)
       const audioUrl = url || link;
@@ -96,9 +96,11 @@ const Soundbox = React.memo(({
         return;
       }
 
-      // Set the src if not already set
+      // Only set src and load when user clicks play button
       if (!audioRef.current.src || audioRef.current.src !== audioUrl) {
+        setIsLoading(true);
         audioRef.current.src = audioUrl;
+        audioRef.current.load();
       }
 
       // Function to attempt playing audio
@@ -112,20 +114,20 @@ const Soundbox = React.memo(({
             playPromise
               .then(() => {
                 setIsPlaying(true);
+                setIsLoading(false);
                 console.log('Audio playing successfully');
               })
               .catch((error) => {
                 console.error('Error playing audio:', error);
                 console.error('Audio URL:', audioUrl);
                 setIsPlaying(false);
+                setIsLoading(false);
               });
           }
         } else {
-          // Audio not ready, wait for it to load
-          audioRef.current.load();
-          
           // Wait for audio to be ready
           const onCanPlay = () => {
+            setIsLoading(false);
             const playPromise = audioRef.current.play();
             if (playPromise !== undefined) {
               playPromise
@@ -136,6 +138,7 @@ const Soundbox = React.memo(({
                 .catch((error) => {
                   console.error('Error playing audio after load:', error);
                   setIsPlaying(false);
+                  setIsLoading(false);
                 });
             }
             audioRef.current.removeEventListener('canplay', onCanPlay);
@@ -154,26 +157,17 @@ const Soundbox = React.memo(({
     }
   }, [isPlaying, url, link, id, handlePlaySound]);
 
-  // Initialize audio element when component mounts or URL changes
-  useEffect(() => {
-    const audioUrl = url || link;
-    if (audioRef.current && audioUrl) {
-      // Set src if not already set or if URL changed
-      if (!audioRef.current.src || audioRef.current.src !== audioUrl) {
-        audioRef.current.src = audioUrl;
-        // Preload the audio to ensure it's ready when user clicks
-        audioRef.current.load();
-      }
-    }
-  }, [url, link]);
+  // Audio is not preloaded - it will only load when user clicks play button
 
   useEffect(() => {
     if (isCurrentlyPlaying) {
       const audioUrl = url || link;
       if (audioRef.current && audioUrl) {
-        // Set src if not already set
+        // Only set src and load when playing (lazy load)
         if (!audioRef.current.src || audioRef.current.src !== audioUrl) {
+          setIsLoading(true);
           audioRef.current.src = audioUrl;
+          audioRef.current.load();
         }
 
         // Function to attempt playing
@@ -182,16 +176,20 @@ const Soundbox = React.memo(({
             const playPromise = audioRef.current.play();
             if (playPromise !== undefined) {
               playPromise
-                .then(() => setIsPlaying(true))
+                .then(() => {
+                  setIsPlaying(true);
+                  setIsLoading(false);
+                })
                 .catch((error) => {
                   console.error('Error playing audio in useEffect:', error);
                   setIsPlaying(false);
+                  setIsLoading(false);
                 });
             }
           } else {
             // Wait for audio to be ready
-            audioRef.current.load();
             const onCanPlay = () => {
+              setIsLoading(false);
               const playPromise = audioRef.current.play();
               if (playPromise !== undefined) {
                 playPromise
@@ -199,6 +197,7 @@ const Soundbox = React.memo(({
                   .catch((error) => {
                     console.error('Error playing audio after load in useEffect:', error);
                     setIsPlaying(false);
+                    setIsLoading(false);
                   });
               }
               audioRef.current.removeEventListener('canplay', onCanPlay);
@@ -215,41 +214,105 @@ const Soundbox = React.memo(({
       if (audioRef.current) {
         audioRef.current.pause();
         setIsPlaying(false);
+        setIsLoading(false);
       }
     }
   }, [isCurrentlyPlaying, url, link]);
 
   const downloadSound = useCallback(async () => {
+    const audioUrl = url || link;
+    if (!audioUrl) {
+      console.error('No audio URL provided for download');
+      toast.error('No audio URL available for download');
+      return;
+    }
+
+    setIsDownloading(true);
+    
     try {
-      const audioUrl = url || link;
-      if (!audioUrl) {
-        console.error('No audio URL provided for download');
-        return;
+      // Try to fetch and download as blob first
+      const response = await fetch(audioUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'audio/mpeg, audio/*',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const response = await fetch(audioUrl);
-      if (!response.ok) throw new Error('Network response was not ok');
       const blob = await response.blob();
-
       const blobUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      const fileName = name.includes('.mp3') ? name : `${name}.mp3`;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
+      const downloadLink = document.createElement('a');
+      downloadLink.href = blobUrl;
+      const fileName = name && name.includes('.mp3') ? name : `${name || 'sound'}.mp3`;
+      downloadLink.download = fileName;
+      downloadLink.style.display = 'none';
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
 
-      document.body.removeChild(link);
-      URL.revokeObjectURL(blobUrl);
+      // Clean up
+      setTimeout(() => {
+        document.body.removeChild(downloadLink);
+        URL.revokeObjectURL(blobUrl);
+      }, 100);
 
-      await soundsAPI.incrementDownload(id);
+      // Increment download count
+      try {
+        await soundsAPI.incrementDownload(id);
+      } catch (apiError) {
+        console.error('Error incrementing download count:', apiError);
+        // Don't fail the download if API call fails
+      }
+
+      toast.success('Download started successfully');
     } catch (error) {
       console.error('Error downloading the MP3:', error);
+      
+      // Fallback: Try direct download link
+      try {
+        const downloadLink = document.createElement('a');
+        downloadLink.href = audioUrl;
+        downloadLink.download = name && name.includes('.mp3') ? name : `${name || 'sound'}.mp3`;
+        downloadLink.target = '_blank';
+        downloadLink.rel = 'noopener noreferrer';
+        downloadLink.style.display = 'none';
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+
+        setTimeout(() => {
+          document.body.removeChild(downloadLink);
+        }, 100);
+
+        // Try to increment download count
+        try {
+          await soundsAPI.incrementDownload(id);
+        } catch (apiError) {
+          console.error('Error incrementing download count:', apiError);
+        }
+
+        toast.info('Opening download link...');
+      } catch (fallbackError) {
+        console.error('Fallback download also failed:', fallbackError);
+        toast.error('Failed to download. Please try again or use the share button.');
+      }
+    } finally {
+      setIsDownloading(false);
     }
-  }, [url, link, id, name, authorId]);
+  }, [url, link, id, name]);
 
   return (
     <>
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes smooth-spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .smooth-spinner {
+          animation: smooth-spin 0.75s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+      `}} />
       <div
         key={id}
         // data-aos="fade-up"
@@ -267,7 +330,18 @@ const Soundbox = React.memo(({
               {name && name}
             </h3>
             <div className="flex justify-center w-full items-center">
-              {isPlaying ?
+              {isLoading ? (
+                <div className="flex items-center justify-center">
+                  <div className="relative" style={{ width: '32px', height: '32px' }}>
+                    <div 
+                      className="absolute inset-0 rounded-full border-2 border-[#e8eaed]/30 border-t-[#e8eaed] smooth-spinner"
+                      style={{
+                        willChange: 'transform'
+                      }}
+                    ></div>
+                  </div>
+                </div>
+              ) : isPlaying ? (
                 <div className="flex flex-row gap-1 items-center justify-center">
                   <div className="wave rounded-full w-2 h-4 bg-white" style={{ "--i": ".4s" }}></div>
                   <div className="wave rounded-full w-2 h-8 bg-gray-100" style={{ "--i": ".4s" }}></div>
@@ -280,7 +354,8 @@ const Soundbox = React.memo(({
                   <div className="wave rounded-full w-2 h-4 bg-gray-200" style={{ "--i": ".4s" }}></div>
                   <div className="wave rounded-full w-2 h-8 bg-gray-100" style={{ "--i": ".4s" }}></div>
                   <div className="wave rounded-full w-2 h-4 bg-white" style={{ "--i": ".4s" }}></div>
-                </div> :
+                </div>
+              ) : (
                 <div className="flex flex-row gap-1 items-center justify-center">
                   <div className=" rounded-full w-2 h-4 bg-white" style={{ "--i": ".4s" }}></div>
                   <div className=" rounded-full w-2 h-8 bg-gray-100" style={{ "--i": ".4s" }}></div>
@@ -293,7 +368,8 @@ const Soundbox = React.memo(({
                   <div className=" rounded-full w-2 h-4 bg-gray-200" style={{ "--i": ".4s" }}></div>
                   <div className="rounded-full w-2 h-8 bg-gray-100" style={{ "--i": ".4s" }}></div>
                   <div className=" rounded-full w-2 h-4 bg-white" style={{ "--i": ".4s" }}></div>
-                </div>}
+                </div>
+              )}
             </div>
           </div>
         </Link>
@@ -410,28 +486,31 @@ const Soundbox = React.memo(({
           <audio
             onEnded={() => {
               setIsPlaying(false);
+              setIsLoading(false);
               handlePlaySound(null);
             }}
             ref={audioRef}
-            src={url || link}
             crossOrigin="anonymous"
-            preload="metadata"
+            preload="none"
             onError={(e) => {
               console.error('Audio load error:', e);
               console.error('Failed URL:', url || link);
               setIsPlaying(false);
-            }}
-            onLoadStart={() => {
-              // Audio loading started
-            }}
-            onCanPlay={() => {
-              // Audio can start playing
-            }}
-            onLoadedData={() => {
-              // Audio data loaded
+              setIsLoading(false);
             }}
           ></audio>
-          {isPlaying ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center" style={{ width: '32px', height: '32px' }}>
+              <div className="relative" style={{ width: '32px', height: '32px' }}>
+                <div 
+                  className="absolute inset-0 rounded-full border-2 border-[#e8eaed]/30 border-t-[#e8eaed] smooth-spinner"
+                  style={{
+                    willChange: 'transform'
+                  }}
+                ></div>
+              </div>
+            </div>
+          ) : isPlaying ? (
             <svg
               onClick={handlePlayPause}
               className=" cursor-pointer "
@@ -448,17 +527,30 @@ const Soundbox = React.memo(({
               className=" cursor-pointer"
               xmlns="http://www.w3.org/2000/svg" height="32px" viewBox="0 -960 960 960" width="32px" fill="#e8eaed"><path d="M320-200v-560l440 280-440 280Z" /></svg>
           )}
-          <svg
-            onClick={downloadSound}
-            className="cursor-pointer"
-            xmlns="http://www.w3.org/2000/svg"
-            height='24px'
-            width='24px'
-            viewBox="0 -960 960 960"
-            fill="#e8eaed"
-          >
-            <path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z" />
-          </svg>
+          {isDownloading ? (
+            <div className="flex items-center justify-center" style={{ width: '24px', height: '24px' }}>
+              <div className="relative" style={{ width: '24px', height: '24px' }}>
+                <div 
+                  className="absolute inset-0 rounded-full border-2 border-[#e8eaed]/30 border-t-[#e8eaed] smooth-spinner"
+                  style={{
+                    willChange: 'transform'
+                  }}
+                ></div>
+              </div>
+            </div>
+          ) : (
+            <svg
+              onClick={downloadSound}
+              className="cursor-pointer"
+              xmlns="http://www.w3.org/2000/svg"
+              height='24px'
+              width='24px'
+              viewBox="0 -960 960 960"
+              fill="#e8eaed"
+            >
+              <path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z" />
+            </svg>
+          )}
         </div>
       </div>
 

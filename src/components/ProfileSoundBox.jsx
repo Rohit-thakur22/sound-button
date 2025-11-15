@@ -14,6 +14,7 @@ const ProfileSoundBox = (props) => {
   const { t } = useTranslation()
   const audioRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [soundUrl, setSoundUrl] = useState()
   const [shareModal, setShareModal] = useState(false)
   const [isBoxVisible, setIsBoxVisible] = useState(false);
@@ -43,10 +44,67 @@ const ProfileSoundBox = (props) => {
     if (isPlaying) {
       audioRef.current.pause();
       props.handlePlaySound(null);
+      setIsPlaying(false);
+      setIsLoading(false);
     } else {
       props.handlePlaySound(props.id);
+      const audioUrl = soundUrl;
+      if (!audioUrl) {
+        console.error('No audio URL provided');
+        return;
+      }
+
+      // Only set src and load when user clicks play button
+      if (!audioRef.current.src || audioRef.current.src !== audioUrl) {
+        setIsLoading(true);
+        audioRef.current.src = audioUrl;
+        audioRef.current.load();
+      }
+
+      // Function to attempt playing audio
+      const attemptPlay = () => {
+        if (audioRef.current.readyState >= 2) {
+          const playPromise = audioRef.current.play();
+          if (playPromise !== undefined) {
+            playPromise
+              .then(() => {
+                setIsPlaying(true);
+                setIsLoading(false);
+              })
+              .catch((error) => {
+                console.error('Error playing audio:', error);
+                setIsPlaying(false);
+                setIsLoading(false);
+              });
+          }
+        } else {
+          // Wait for audio to be ready
+          const onCanPlay = () => {
+            setIsLoading(false);
+            const playPromise = audioRef.current.play();
+            if (playPromise !== undefined) {
+              playPromise
+                .then(() => {
+                  setIsPlaying(true);
+                })
+                .catch((error) => {
+                  console.error('Error playing audio after load:', error);
+                  setIsPlaying(false);
+                  setIsLoading(false);
+                });
+            }
+            audioRef.current.removeEventListener('canplay', onCanPlay);
+            audioRef.current.removeEventListener('canplaythrough', onCanPlay);
+          };
+          audioRef.current.addEventListener('canplay', onCanPlay);
+          audioRef.current.addEventListener('canplaythrough', onCanPlay);
+        }
+      };
+
+      if (audioRef.current) {
+        attemptPlay();
+      }
     }
-    setIsPlaying(!isPlaying);
   };
 
   useEffect(() => {
@@ -55,13 +113,63 @@ const ProfileSoundBox = (props) => {
 
   useEffect(() => {
     if (props.isPlaying) {
-      audioRef.current.play();
-      setIsPlaying(true);
+      const audioUrl = soundUrl;
+      if (audioRef.current && audioUrl) {
+        // Only set src and load when playing (lazy load)
+        if (!audioRef.current.src || audioRef.current.src !== audioUrl) {
+          setIsLoading(true);
+          audioRef.current.src = audioUrl;
+          audioRef.current.load();
+        }
+
+        // Function to attempt playing
+        const attemptPlay = () => {
+          if (audioRef.current.readyState >= 2) {
+            const playPromise = audioRef.current.play();
+            if (playPromise !== undefined) {
+              playPromise
+                .then(() => {
+                  setIsPlaying(true);
+                  setIsLoading(false);
+                })
+                .catch((error) => {
+                  console.error('Error playing audio in useEffect:', error);
+                  setIsPlaying(false);
+                  setIsLoading(false);
+                });
+            }
+          } else {
+            // Wait for audio to be ready
+            const onCanPlay = () => {
+              setIsLoading(false);
+              const playPromise = audioRef.current.play();
+              if (playPromise !== undefined) {
+                playPromise
+                  .then(() => setIsPlaying(true))
+                  .catch((error) => {
+                    console.error('Error playing audio after load in useEffect:', error);
+                    setIsPlaying(false);
+                    setIsLoading(false);
+                  });
+              }
+              audioRef.current.removeEventListener('canplay', onCanPlay);
+              audioRef.current.removeEventListener('canplaythrough', onCanPlay);
+            };
+            audioRef.current.addEventListener('canplay', onCanPlay);
+            audioRef.current.addEventListener('canplaythrough', onCanPlay);
+          }
+        };
+
+        attemptPlay();
+      }
     } else {
-      audioRef.current.pause();
-      setIsPlaying(false);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+        setIsLoading(false);
+      }
     }
-  }, [props.isPlaying]);
+  }, [props.isPlaying, soundUrl]);
 
   function deleteClicked(id) {
     Swal.fire({
@@ -143,7 +251,19 @@ const ProfileSoundBox = (props) => {
             <path d="M720-80q-50 0-85-35t-35-85q0-7 1-14.5t3-13.5L322-392q-17 15-38 23.5t-44 8.5q-50 0-85-35t-35-85q0-50 35-85t85-35q23 0 44 8.5t38 23.5l282-164q-2-6-3-13.5t-1-14.5q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35q-23 0-44-8.5T638-672L356-508q2 6 3 13.5t1 14.5q0 7-1 14.5t-3 13.5l282 164q17-15 38-23.5t44-8.5q50 0 85 35t35 85q0 50-35 85t-85 35Zm0-640q17 0 28.5-11.5T760-760q0-17-11.5-28.5T720-800q-17 0-28.5 11.5T680-760q0 17 11.5 28.5T720-720ZM240-440q17 0 28.5-11.5T280-480q0-17-11.5-28.5T240-520q-17 0-28.5 11.5T200-480q0 17 11.5 28.5T240-440Zm480 280q17 0 28.5-11.5T760-200q0-17-11.5-28.5T720-240q-17 0-28.5 11.5T680-200q0 17 11.5 28.5T720-160Zm0-600ZM240-480Zm480 280Z" />
           </svg>
 
-          <audio onEnded={() => setIsPlaying(false)} ref={audioRef} src={soundUrl}></audio>
+          <audio 
+            onEnded={() => {
+              setIsPlaying(false);
+              setIsLoading(false);
+            }} 
+            ref={audioRef} 
+            preload="none"
+            onError={(e) => {
+              console.error('Audio load error:', e);
+              setIsPlaying(false);
+              setIsLoading(false);
+            }}
+          ></audio>
           {isPlaying ?
             <svg onClick={handlePlayPause} className='w-16 cursor-pointer h-12' xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="#e8eaed"><path d="M564-284v-392h139.5v392H564Zm-307 0v-392h139.5v392H257Z" /></svg>
             :

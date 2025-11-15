@@ -383,7 +383,7 @@ const ProfilePage = ({ uploadCheck, creatorsdata, locale = 'en' }) => {
                             <h4 className='mt-2'>Creator | Sound Effect Buttons</h4>
 
                         </div>
-                        {userRank < 2 ?
+                        {userRank > 2 ?
                             <div className='flex items-center flex-col px-5 border-l py-4 justify-center text-center'>
                                 <h4 className='mt-2'>Boost your visibility and popularity</h4>
                                 <h4 className=''>Add your social media links</h4>

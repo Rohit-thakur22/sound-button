@@ -23,6 +23,8 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
   const audioRef = useRef(null);
   const router = useRouter();
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [theme, setTheme] = useState(false);
   const [soundUrl, setSoundUrl] = useState();
   const [favourited, setFavourited] = useState(false);
@@ -211,29 +213,65 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
     if (isPlaying) {
       audioRef.current.pause();
       setIsPlaying(false);
+      setIsLoading(false);
     } else {
-      if (!soundUrl) {
-        loadSound(soundObj.url);
+      const audioUrl = soundObj?.url;
+      if (!audioUrl) {
+        console.error('No audio URL provided');
+        return;
       }
 
-      // Ensure audio is loaded before playing
-      if (audioRef.current.readyState < 3) {
+      // Only set src and load when user clicks play button
+      if (!audioRef.current.src || audioRef.current.src !== audioUrl) {
+        setIsLoading(true);
+        audioRef.current.src = audioUrl;
         audioRef.current.load();
       }
 
-      const playPromise = audioRef.current.play();
+      // Function to attempt playing audio
+      const attemptPlay = () => {
+        if (audioRef.current.readyState >= 2) {
+          const playPromise = audioRef.current.play();
+          if (playPromise !== undefined) {
+            playPromise
+              .then(() => {
+                setIsPlaying(true);
+                setIsLoading(false);
+                console.log('Audio playing successfully');
+              })
+              .catch((error) => {
+                console.error('Error playing audio:', error);
+                setIsPlaying(false);
+                setIsLoading(false);
+              });
+          }
+        } else {
+          // Wait for audio to be ready
+          const onCanPlay = () => {
+            setIsLoading(false);
+            const playPromise = audioRef.current.play();
+            if (playPromise !== undefined) {
+              playPromise
+                .then(() => {
+                  setIsPlaying(true);
+                  console.log('Audio playing successfully after load');
+                })
+                .catch((error) => {
+                  console.error('Error playing audio after load:', error);
+                  setIsPlaying(false);
+                  setIsLoading(false);
+                });
+            }
+            audioRef.current.removeEventListener('canplay', onCanPlay);
+            audioRef.current.removeEventListener('canplaythrough', onCanPlay);
+          };
+          audioRef.current.addEventListener('canplay', onCanPlay);
+          audioRef.current.addEventListener('canplaythrough', onCanPlay);
+        }
+      };
 
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            setIsPlaying(true);
-            console.log('Audio playing successfully');
-          })
-          .catch((error) => {
-            console.error('Error playing audio:', error);
-            console.error('Audio URL:', soundUrl);
-            setIsPlaying(false);
-          });
+      if (audioRef.current) {
+        attemptPlay();
       }
     }
   };
@@ -246,21 +284,85 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
   }, []);
 
   const downloadSound = async () => {
-    try {
-      const response = await fetch(soundObj.url);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `${soundObj.name}.mp3`);
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode.removeChild(link);
-      window.URL.revokeObjectURL(url);
+    const audioUrl = soundObj?.url;
+    if (!audioUrl) {
+      console.error('No audio URL provided for download');
+      toast.error('No audio URL available for download');
+      return;
+    }
 
-      await soundsAPI.incrementDownload(id);
+    setIsDownloading(true);
+    
+    try {
+      // Try to fetch and download as blob first
+      const response = await fetch(audioUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'audio/mpeg, audio/*',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const downloadLink = document.createElement('a');
+      downloadLink.href = blobUrl;
+      const fileName = soundObj.name && soundObj.name.includes('.mp3') ? soundObj.name : `${soundObj.name || 'sound'}.mp3`;
+      downloadLink.download = fileName;
+      downloadLink.style.display = 'none';
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+
+      // Clean up
+      setTimeout(() => {
+        document.body.removeChild(downloadLink);
+        URL.revokeObjectURL(blobUrl);
+      }, 100);
+
+      // Increment download count
+      try {
+        await soundsAPI.incrementDownload(id);
+      } catch (apiError) {
+        console.error('Error incrementing download count:', apiError);
+        // Don't fail the download if API call fails
+      }
+
+      toast.success('Download started successfully');
     } catch (error) {
-      console.error("Error downloading the sound:", error);
+      console.error('Error downloading the MP3:', error);
+      
+      // Fallback: Try direct download link
+      try {
+        const downloadLink = document.createElement('a');
+        downloadLink.href = audioUrl;
+        downloadLink.download = soundObj.name && soundObj.name.includes('.mp3') ? soundObj.name : `${soundObj.name || 'sound'}.mp3`;
+        downloadLink.target = '_blank';
+        downloadLink.rel = 'noopener noreferrer';
+        downloadLink.style.display = 'none';
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+
+        setTimeout(() => {
+          document.body.removeChild(downloadLink);
+        }, 100);
+
+        // Try to increment download count
+        try {
+          await soundsAPI.incrementDownload(id);
+        } catch (apiError) {
+          console.error('Error incrementing download count:', apiError);
+        }
+
+        toast.info('Opening download link...');
+      } catch (fallbackError) {
+        console.error('Fallback download also failed:', fallbackError);
+        toast.error('Failed to download. Please try again or use the share button.');
+      }
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -303,6 +405,15 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
 console.log('displayedSounds', displayedSounds);
   return (
     <div className={`${theme && "dark"}`}>
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes smooth-spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .smooth-spinner {
+          animation: smooth-spin 0.75s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+      `}} />
       <ToastContainer
         position="bottom-left"
         autoClose={3000}
@@ -479,25 +590,40 @@ console.log('displayedSounds', displayedSounds);
                   )}
                 </div>
                 <audio
-                  onEnded={() => setIsPlaying(false)}
+                  onEnded={() => {
+                    setIsPlaying(false);
+                    setIsLoading(false);
+                  }}
                   ref={audioRef}
-                  src={soundUrl}
                   crossOrigin="anonymous"
-                  preload="metadata"
+                  preload="none"
                   onError={(e) => {
                     console.error('Audio load error:', e);
-                    console.error('Failed URL:', soundUrl);
+                    console.error('Failed URL:', soundObj?.url);
+                    setIsPlaying(false);
+                    setIsLoading(false);
                   }}
-
-                  onLoadStart={() => null}
-                  onCanPlay={() => null}
                 ></audio>
                 <button
                   style={{ color: soundObj && soundObj.color }}
                   onClick={handlePlayPause}
-                  className="bg-white font-semibold rounded my-2 mt-5 mx-auto max-w-[400px] flex items-center gap-3 w-full justify-center py-2.5"
+                  disabled={isLoading}
+                  className="bg-white font-semibold rounded my-2 mt-5 mx-auto max-w-[400px] flex items-center gap-3 w-full justify-center py-2.5 disabled:opacity-70"
                 >
-                  {isPlaying ? (
+                  {isLoading ? (
+                    <div className="flex items-center gap-3">
+                      <div className="relative" style={{ width: '20px', height: '20px' }}>
+                        <div 
+                          className="absolute inset-0 rounded-full border-2 border-current border-t-transparent smooth-spinner"
+                          style={{
+                            willChange: 'transform',
+                            color: soundObj && soundObj.color
+                          }}
+                        ></div>
+                      </div>
+                      {t("loading") || "Loading..."}
+                    </div>
+                  ) : isPlaying ? (
                     <div className="flex items-center gap-3">
                       <svg
                         className="w-6 h-6"
@@ -530,7 +656,13 @@ console.log('displayedSounds', displayedSounds);
                   soundObj.tags?.map((tag, index) => (
                     <div
                       key={index}
-                      className="bg-blue-100 rounded-sm text-blue-800 px-2 py-1"
+                      onClick={() => {
+                        if (tag?.name) {
+                          const formattedTag = tag.name.replace(/\s+/g, '-');
+                          router.push(`/${locale}/search/${formattedTag}`);
+                        }
+                      }}
+                      className="bg-blue-100 rounded-sm text-blue-800 px-2 py-1 cursor-pointer hover:bg-blue-200 transition-colors"
                     >
                       {tag?.name}
                     </div>
@@ -589,18 +721,35 @@ console.log('displayedSounds', displayedSounds);
                 )}
                 <button
                   onClick={() => downloadSound()}
-                  className="bg-[#BB2E42] text-white rounded flex mx-auto max-w-[400px] items-center gap-3 w-full justify-center py-2.5"
+                  disabled={isDownloading}
+                  className="bg-[#BB2E42] text-white rounded flex mx-auto max-w-[400px] items-center gap-3 w-full justify-center py-2.5 disabled:opacity-70"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    height="24px"
-                    viewBox="0 -960 960 960"
-                    width="24px"
-                    fill="#e8eaed"
-                  >
-                    <path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z" />
-                  </svg>
-                  {t("downloadsoundbutton")}
+                  {isDownloading ? (
+                    <>
+                      <div className="relative" style={{ width: '24px', height: '24px' }}>
+                        <div 
+                          className="absolute inset-0 rounded-full border-2 border-white/30 border-t-white smooth-spinner"
+                          style={{
+                            willChange: 'transform'
+                          }}
+                        ></div>
+                      </div>
+                      {t("loading") || "Downloading..."}
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        height="24px"
+                        viewBox="0 -960 960 960"
+                        width="24px"
+                        fill="#e8eaed"
+                      >
+                        <path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z" />
+                      </svg>
+                      {t("downloadsoundbutton")}
+                    </>
+                  )}
                 </button>
                 <RWebShare
                   data={{
