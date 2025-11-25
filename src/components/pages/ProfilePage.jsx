@@ -208,7 +208,7 @@ const ProfilePage = ({ uploadCheck, creatorsdata, locale = 'en' }) => {
             <main className="hidebar dark:bg-[#212D3D] w-full relative flex min-h-screen flex-col items-center">
                 <NavbarHead locale={locale} />
                 <div className='md:block hidden top-[60px] h-[250px] overflow-hidden bg-[#F2F3F5] absolute w-full'>
-                    {istopCreator &&
+                    {userRank < 2 &&
                         <svg className='' xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 2048 389">
                             <path transform="translate(0)" d="m0 0h2048v389h-2048z" fill="#F2F3F5" />
                             <path transform="translate(362,139)" d="m0 0 5 1 2 3 9-1 13-2v2l-20 5v16l-2 13 2 5 8 1 4-8 3-7 4-3v3l-2 3v7l2 2h6l3-3-5-4-2-7 2-3 5 1 3 4v5l6-1 1-9-3-1v-6l3-3 3 3v3l6-1 2 1 3 13 5 1 4-5 3-7h2l-1 6-5 8-6 2-5-3-2-6v-7h-5v7l-4 6-3 2h-4l-2 5-5 3-7-1-2-4h-2l-1 4-5 4-6-1-6-5-2 6-4 4-7-1v-2l-6 5-4 1-6-4-2 5-5 3h-6l-5-4v-2h-2l-1 4-4 5-6 1-5-5-1-11-4 1-1 6h-3v-5l-4-1v-6l1-2 4 1 1 4 6-1 3 4 2 10 5 1h2l2-5 4-12 3-3 5 1 2 2v6l-4 7h7l4-5 4-11 4-4 7-1 2 1v2l-8 1-3 4v7l1 2 5-1 3-9 3 3 2 4h5l4-8-1-7-3-12-1-9-11 2h-4l1-3 14-3z" fill="#1B1D5E" />
