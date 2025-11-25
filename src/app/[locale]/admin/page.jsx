@@ -1,25 +1,25 @@
 "use client";
+import AdminNewSound from "@/components/adminnewsound/AdminNewSound";
+import BulkUpload from "@/components/bulkupload/BulkUpload";
+import EditSound from "@/components/editsound/EditSound";
 import Users from "@/components/table/Users";
+import { useCategories } from "@/hooks/useCategories";
+import { useDashboardSounds } from "@/hooks/useDashboardSounds";
+import { useDashboardUsers } from "@/hooks/useDashboardUsers";
+import { useDeleteSound } from "@/hooks/useDeleteSound";
+import { useQueryClient } from "@tanstack/react-query";
 import { Dropdown } from "flowbite-react";
 import { debounce } from "lodash";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter, useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import DataTable from "react-data-table-component";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Swal from "sweetalert2";
 import logo from "../../../assets/images/logo.png";
-import { createUser } from "@/database/createUser";
-import AdminNewSound from "@/components/adminnewsound/AdminNewSound";
-import BulkUpload from "@/components/bulkupload/BulkUpload";
-import EditSound from "@/components/editsound/EditSound";
-import { useDashboardSounds } from "@/hooks/useDashboardSounds";
-import { useDashboardUsers } from "@/hooks/useDashboardUsers";
-import { useCategories } from "@/hooks/useCategories";
-import { useDeleteSound } from "@/hooks/useDeleteSound";
-import { useQueryClient } from "@tanstack/react-query";
+import { isAdminAuthenticated } from "@/lib/auth";
 
 const Admin = () => {
   const router = useRouter();
@@ -37,14 +37,19 @@ const Admin = () => {
   const [adminCheck, setAdminCheck] = useState(null);
   const [hasChecked, setHasChecked] = useState(false);
 
-  // Check for admin token only on client side
+  // Check for admin token only on client side - immediate check
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('adminAuthToken');
-      setAdminCheck(token);
+      const isAuthenticated = isAdminAuthenticated();
+      setAdminCheck(isAuthenticated);
       setHasChecked(true);
+      
+      // Immediately redirect if not authenticated
+      if (!isAuthenticated) {
+        router.replace(`/${locale}/admin/login`);
+      }
     }
-  }, []);
+  }, [router, locale]);
 
   // Use React Query for categories
   const {
@@ -184,7 +189,7 @@ const Admin = () => {
     }
   }, [usersError]);
 
- // Redirect to login if not authenticated (only after client-side check)
+ // Additional safeguard: Redirect to login if not authenticated (only after client-side check)
  useEffect(() => {
    if (!hasChecked) return; // Still checking
    if (!adminCheck) {
@@ -192,7 +197,7 @@ const Admin = () => {
    }
  }, [adminCheck, hasChecked, router, locale]);
 
-
+ // Prevent rendering if not authenticated - show nothing while redirecting
  if (!hasChecked || !adminCheck) {
    return null; // Will redirect via useEffect
  }

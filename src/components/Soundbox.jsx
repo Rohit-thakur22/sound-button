@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { RWebShare } from "react-web-share";
+import Swal from 'sweetalert2';
 import fb from '../assets/images/social/fb.png';
 import twitter from '../assets/images/social/twitter.png';
 import whatsapp from '../assets/images/social/whatsapp.png';
@@ -27,7 +28,9 @@ const Soundbox = React.memo(({
   isPlaying: isCurrentlyPlaying,
   handlePlaySound,
   visitShow,
-  profileFav
+  profileFav,
+  showDelete = false,
+  handleRefresh
 }) => {
   const { t } = useTranslation()
   const audioRef = useRef(null);
@@ -40,6 +43,7 @@ const Soundbox = React.memo(({
   const [copied, setCopied] = useState(false)
   const [adding, setAdding] = useState(false);
   const [loggedIn, setLogedIn] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const isValidColor = (color) => CSS.supports("color", color);
 
   useEffect(() => {
@@ -219,6 +223,48 @@ const Soundbox = React.memo(({
     }
   }, [isCurrentlyPlaying, url, link]);
 
+  const handleDeleteSound = useCallback(async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    Swal.fire({
+      text: "Do you want to continue?",
+      icon: "warning",
+      confirmButtonText: "Delete",
+      showCancelButton: true,
+      cancelButtonText: "Cancel",
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        setIsDeleting(true);
+        try {
+          const response = await soundsAPI.deleteSound(id);
+          
+          if (response.status === 200 || response.status === 204) {
+            toast.success('Sound deleted successfully', {
+              position: 'bottom-left',
+            });
+            
+            // Refresh the list
+            if (handleRefresh) {
+              handleRefresh();
+            } else if (setRefreshKey) {
+              setRefreshKey(prevKey => prevKey + 1);
+            }
+          } else {
+            toast.error('Failed to delete sound');
+          }
+        } catch (error) {
+          console.error('Error deleting sound:', error);
+          toast.error(error.response?.data?.message || 'Failed to delete sound', {
+            position: 'bottom-left',
+          });
+        } finally {
+          setIsDeleting(false);
+        }
+      }
+    });
+  }, [id, name, handleRefresh, setRefreshKey]);
+
   const downloadSound = useCallback(async () => {
     const audioUrl = url || link;
     if (!audioUrl) {
@@ -375,7 +421,26 @@ const Soundbox = React.memo(({
         </Link>
 
         <div className="flex justify-around w-full items-center px-3">
-          {!visitShow ?
+          {showDelete ? (
+            <div className='cursor-pointer' onClick={handleDeleteSound} title="Delete sound">
+              {isDeleting ? (
+                <div className="flex items-center justify-center" style={{ width: '24px', height: '24px' }}>
+                  <div className="relative" style={{ width: '24px', height: '24px' }}>
+                    <div 
+                      className="absolute inset-0 rounded-full border-2 border-[#e8eaed]/30 border-t-[#e8eaed] smooth-spinner"
+                      style={{
+                        willChange: 'transform'
+                      }}
+                    ></div>
+                  </div>
+                </div>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e8eaed">
+                  <path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
+                </svg>
+              )}
+            </div>
+          ) : !visitShow ? (
             <div>
               {
                 profileFav ?
@@ -461,7 +526,7 @@ const Soundbox = React.memo(({
                     }
                   </div>
               }</div>
-            : null}
+            ) : null}
 
           <RWebShare
             data={{

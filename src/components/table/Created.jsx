@@ -97,6 +97,7 @@ const Created = (props) => {
                             isPlaying={currentlyPlayingSound === sound.id}
                             handlePlaySound={handlePlaySound}
                             handleRefresh={handleRefresh}
+                            showDelete={true}
                         />
                     )) :
                         <div className='w-full flex items-center justify-center'>

@@ -34,6 +34,17 @@ const BulkUpload = (props) => {
         }).filter(id => id !== null && id !== undefined);
     };
 
+    // Reset all form fields
+    const resetForm = () => {
+        setFiles();
+        setCategories([]);
+        setSubmitted(false);
+        // Clear file input
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+
     async function submitClicked(e) {
         e.preventDefault()
         
@@ -63,12 +74,8 @@ const BulkUpload = (props) => {
                     {
                         onSuccess: () => {
                             props.bulkSoundSubmit();
-                            setFiles();
-                            if (fileInputRef.current) {
-                                fileInputRef.current.value = '';
-                            }
-                            setSubmitted(false);
-                            setCategories([]);
+                            // Reset form
+                            resetForm();
                         },
                         onError: () => {
                             setSubmitted(false);
@@ -108,13 +115,8 @@ const BulkUpload = (props) => {
                     
                     await handleUpload(filteredFiles);
                 } else if (result.isDenied) {
+                    resetForm();
                     props.hideBulkModal();
-                    setFiles();
-                    if (fileInputRef.current) {
-                        fileInputRef.current.value = '';
-                    }
-                    setSubmitted(false);
-                    setCategories([]);
                 }
             });
         } else {
@@ -129,7 +131,10 @@ const BulkUpload = (props) => {
                 <div className="flex flex-col relative gap-4 h-min">
                     <div className="flex rounded-t-lg items-center justify-between px-6 py-3 bg-[#F9F7F7]">
                         <h1 className="text-2xl font-semibold">Add Bulk Sounds</h1>
-                        <svg onClick={props.hideBulkModal} className="hover:rotate-90 cursor-pointer duration-150" xmlns="http://www.w3.org/2000/svg" height="28px" viewBox="0 -960 960 960" width="28px" fill=""><path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z" /></svg>
+                        <svg onClick={() => {
+                            resetForm();
+                            props.hideBulkModal();
+                        }} className="hover:rotate-90 cursor-pointer duration-150" xmlns="http://www.w3.org/2000/svg" height="28px" viewBox="0 -960 960 960" width="28px" fill=""><path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z" /></svg>
                     </div>
 
                     <div className="p-4 pb-4 pt-0">

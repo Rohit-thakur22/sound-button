@@ -1,6 +1,6 @@
 
 import { soundsAPI, categoriesAPI, tagsAPI } from '../../lib/apiServices';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Select from 'react-select';
 import CreatableSelect from 'react-select/creatable';
 import { toast } from 'react-toastify';
@@ -22,6 +22,7 @@ const NewSound = (props) => {
     const [restrictedWordInDescription, setRestrictedWordInDescription] = useState(false)
     const [WordInName, setWordInName] = useState(false)
     const [WordInDescription, setWordInDescription] = useState(false)
+    const fileInputRef = useRef(null);
 
 
     async function getCategories() {
@@ -77,6 +78,25 @@ const NewSound = (props) => {
             description: description
         })
     }, [name, color, description, tags, categories])
+
+    // Reset all form fields
+    const resetForm = () => {
+        setName('');
+        setSoundFile(null);
+        setColor('');
+        setCategories([]);
+        setDescription('');
+        setTags([]);
+        setSubmitted(false);
+        setRestrictedWordInName(false);
+        setRestrictedWordInDescription(false);
+        setWordInName(false);
+        setWordInDescription(false);
+        // Clear file input
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
 
     const restrictedWords = [
         '2g1c', '4r5e', '5h1t', '5hit', 'a55', 'ass', 'acrotomophilia', 'anal', 'anilingus', 'anus', 'apeshit', 'ar5e', 'arrse', 'arse', 'arsehole', 'fucker', 'assbag', 'assbandit', 'assbanger', 'assbite', 'assclown', 'asscock', 'asscracker', 'asses', 'assface', 'assfucker', 'assfukka', 'assgoblin', 'asshat', 'asshead', 'asshole', 'assholes', 'asshopper', 'assjacker', 'asslick', 'asslicker', 'assmonkey', 'assmunch', 'assmuncher', 'asspirate', 'assshole', 'asssucker', 'asswad', 'asswhole', 'asswipe', 'autoerotic', 'b!tch', 'b00bs', 'b17ch', 'b1tch', 'babeland', 'babybatter', 'ballgag', 'ballgravy', 'ballkicking', 'balllicking', 'ballsack', 'ballsucking', 'ballbag', 'balls', 'ballsack', 'bampot', 'bangbros', 'bareback', 'barelylegal', 'barenaked', 'bastard', 'bastardo', 'bastinado', 'bbw', 'bdsm', 'beaner', 'beaners', 'beastial', 'beastiality', 'beastility', 'beavercleaver', 'beaverlips', 'bellend', 'bestial', 'bestiality', 'bi+ch', 'biatch', 'big black', 'big breasts', 'big knockers', 'big tits', 'bimbos', 'birdlock', 'bitch', 'bitcher', 'bitchers', 'bitches', 'bitchin', 'bitching', 'blackcock', 'blondeaction', 'blondeaction', 'bloody', 'blowload', 'blowjob', 'blowjobs', 'bluewaffle', 'blumpkin', 'boiolas', 'bollock', 'bollocks', 'bollok', 'bollox', 'bondage', 'boner', 'boob', 'boobie', 'boobs', 'booobs', 'boooobs', 'booooobs', 'booooooobs', 'bootycall', 'breasts', 'brownshowers', 'brunetteaction', 'buceta', 'bugger', 'bukkake', 'bulldyke', 'bulletvibe', 'bullshit', 'bum', 'bunghole', 'bunnyfucker', 'busty', 'butt', 'buttpirate', 'buttcheeks', 'butthole', 'buttmunch', 'buttplug', 'c0ck', 'c0cksucker', 'cameltoe', 'camgirl', 'camslut', 'camwhore', 'carpetmuncher', 'carpetmuncher', 'cawk', 'chinc', 'chink', 'choad', 'chocolaterosebuds', 'chode', 'cipa', 'circlejerk', 'cl1t', 'clevelandsteamer', 'clit', 'clitface', 'clitoris', 'clits', 'cloverclamps', 'clusterfuck', 'cnut', 'cock', 'cock-sucker', 'cockbite', 'cockburger', 'cockface', 'cockhead', 'cockjockey', 'cockknoker', 'cockmaster', 'cockmongler', 'cockmongruel', 'cockmonkey', 'cockmunch', 'cockmuncher', 'cocknose', 'cocknugget', 'cocks', 'cockshit', 'cocksmith', 'cocksmoker', 'cocksuck', 'cocksuck ', 'cocksucked', 'cocksucked ', 'cocksucker', 'cocksucking', 'cocksucks ', 'cocksuka', 'cocksukka', 'cok', 'cokmuncher', 'coksucka', 'coochie', 'coochy', 'coon', 'coons', 'cooter', 'coprolagnia', 'coprophilia', 'cornhole', 'cox', 'crap', 'creampie', 'cum', 'cumbubble', 'cumdumpster', 'cumguzzler', 'cumjockey', 'cummer', 'cumming', 'cums', 'cumshot', 'cumslut', 'cumtart', 'cunilingus', 'cunillingus', 'cunnie', 'cunnilingus', 'cunt', 'cuntface', 'cunthole', 'cuntlick', 'cuntlick ', 'cuntlicker', 'cuntlicker ', 'cuntlicking', 'cuntlicking ', 'cuntrag', 'cunts', 'cyalis', 'cyberfuc', 'cyberfuck ', 'cyberfucked ', 'cyberfucker', 'cyberfuckers', 'cyberfucking ', 'd1ck', 'dammit', 'damn', 'darkie', 'daterape', 'daterape', 'deepthroat', 'deepthroat', 'dendrophilia', 'dick', 'dickbag', 'dickbeater', 'dickface', 'dickhead', 'dickhole', 'dickjuice', 'dickmilk', 'dickmonger', 'dickslap', 'dicksucker', 'dickwad', 'dickweasel', 'dickweed', 'dickwod', 'dike', 'dildo', 'dildos', 'dingleberries', 'dingleberry', 'dink', 'dinks', 'dipshit', 'dirsa', 'dirtypillows', 'dirtysanchez', 'dlck', 'dogstyle', 'dog-fucker', 'doggiestyle', 'doggin', 'dogging', 'doggystyle', 'doggystyle', 'dolcett', 'domination', 'dominatrix', 'dommes', 'donkeypunch', 'donkeyribber', 'doochbag', 'dookie', 'doosh', 'doubledong', 'doublepenetration', 'douche', 'douchebag', 'dryhump', 'duche', 'dumbshit', 'dumshit', 'dvda', 'dyke', 'eatmyass', 'ecchi', 'erotic', 'erotism', 'escort', 'eunuch', 'fuck', 'fucker', 'f4nny', 'fag', 'fagbag', 'fagg', 'fagging', 'faggit', 'faggitt', 'faggot', 'faggs', 'fagot', 'fagots', 'fags', 'fagtard', 'fanny', 'fannyflaps', 'fannyfucker', 'fanyy', 'fart', 'farted', 'farting', 'farty', 'fatass', 'fcuk', 'fcuker', 'fcuking', 'fecal', 'feck', 'fecker', 'felatio', 'felch', 'felching', 'fellate', 'fellatio', 'feltch', 'squirting', 'femdom', 'figging', 'fingerbang', 'fingerfuck ', 'fingerfucked ', 'fingerfucker ', 'fingerfuckers', 'fingerfucking ', 'fingerfucks ', 'fingering', 'fistfuck', 'fistfucked ', 'fistfucker ', 'fistfuckers ', 'fistfucking ', 'fistfuckings ', 'fistfucks ', 'fisting', 'flamer', 'flange', 'fook', 'fooker', 'foot fetish', 'footjob', 'frotting', 'fuck', 'fuckbuttons', 'fucka', 'fucked', 'fucker', 'fuckers', 'fuckhead', 'fuckheads', 'fuckin', 'fucking', 'fuckings', 'fuckingshitmotherfucker', 'fuckme ', 'fucks', 'fucktards', 'fuckwhit', 'fuckwit', 'fudgepacker', 'fudgepacker', 'fuk', 'fuker', 'fukker', 'fukkin', 'fuks', 'fukwhit', 'fukwit', 'futanari', 'fux', 'fux0r', 'g-spot', 'gangbang', 'gangbang', 'gangbanged', 'gangbanged ', 'gangbangs ', 'gaysex', 'gayass', 'gaybob', 'gaydo', 'gaylord', 'gaysex', 'gaytard', 'gaywad', 'genitals', 'giant cock', 'girlon', 'girlontop', 'girlsgonewild', 'goatcx', 'goatse', 'god-dam', 'god-damned', 'goddamn', 'goddamned', 'gokkun', 'gooch', 'goodpoop', 'gook', 'goregasm', 'gringo', 'grope', 'groupsex', 'guido', 'guro', 'handjob', 'hardcore', 'hardcoresex ', 'heeb', 'hell', 'hentai', 'heshe', 'ho', 'hoar', 'hoare', 'hoe', 'hoer', 'homo', 'homoerotic', 'honkey', 'honky', 'hooker', 'hore', 'horniest', 'horny', 'hotcarl', 'hotsex', 'kill', 'murder', 'hugefat', 'humping', 'incest', 'intercourse ', 'jackass', 'jackoff', 'jailbait', 'jap', 'jerk-off ', 'jigaboo', 'jiggaboo', 'jiggerboo', 'jism', 'jiz', 'jiz ', 'jizm', 'jizm ', 'jizz', 'juggs', 'kawk', 'kike', 'kinbaku', 'kinkster', 'kinky', 'kiunt', 'knob', 'knobbing', 'knobead', 'knobed', 'knobend', 'knobhead', 'knobjocky', 'knobjokey', 'kock', 'kondum', 'kondums', 'kooch', 'kootch', 'kum', 'kumer', 'kummer', 'kumming', 'kums', 'kunilingus', 'kunt', 'kyke', 'l3inch', 'l3itch', 'labia', 'lesbo', 'lezzie', 'lmfao', 'lolita', 'lovemaking', 'lust', 'lusting', 'm0f0', 'm0fo', 'm45terbate', 'ma5terb8', 'ma5terbate', 'cum', 'malesquirting', 'masochist', 'master-bate', 'masterb8', 'masterbat*', 'masterbat3', 'masterbate', 'masterbation', 'masterbations', 'masturbate', 'milf', 'minge', 'missionary', 'mo-fo', 'mof0', 'mofo', 'mothafuck', 'mothafucka', 'mothafuckas', 'mothafuckaz', 'mothafucked ', 'mothafucker', 'mothafuckers', 'mothafuckin', 'mothafucking ', 'mothafuckings', 'mothafucks', 'motherfucker', 'motherfuck', 'motherfucked', 'motherfucker', 'motherfuckers', 'motherfuckin', 'motherfucking', 'motherfuckings', 'motherfuckka', 'motherfucks', 'muffdiver', 'muffdiving', 'mutha', 'muthafecker', 'muthafuckker', 'muther', 'mutherfucker', 'nigga', 'n1gger', 'nambla', 'nawashi', 'nazi', 'negro', 'neonazi', 'nigg3r', 'nigg4h', 'niggah', 'niggas', 'niggaz', 'nigger', 'niggers ', 'niglet', 'nimphomania', 'nipple', 'nipples', 'nobhead', 'nobjocky', 'nobjokey', 'nsfwimages', 'nude', 'nudity', 'numbnuts', 'nutsack', 'nympho', 'nymphomania', 'octopussy', 'omorashi', 'onecuptwogirls', 'orgasim', 'orgasim ', 'orgasims ', 'orgasm', 'orgasms ', 'orgy', 'p0rn', 'porn', 'paedophile', 'paki', 'panooch', 'panties', 'panty', 'pawn', 'pecker', 'peckerhead', 'pedobear', 'pedophile', 'pegging', 'penis', 'penisfucker', 'phonesex', 'phuck', 'phuk', 'phuked', 'phuking', 'phukked', 'phukking', 'phuks', 'phuq', 'shit', 'pigfucker', 'pimpis', 'pis', 'pises', 'pisin', 'pising', 'pisof', 'piss', 'pissed', 'pisser', 'pissers', 'pisses ', 'pissflap', 'pissflaps', 'pissin', 'pissin ', 'pissing', 'pissoff', 'pissoff ', 'pisspig', 'playboy', 'polesmoker', 'pollock', 'ponyplay', 'poonani', 'poonany', 'poontang', 'poop', 'poopchute', 'porn', 'porno', 'pornography', 'pornos', 'prick', 'pricks ', 'pron', 'pthc', 'pube', 'pubes', 'punanny', 'punany', 'punta', 'pusies', 'pusse', 'pussi', 'pussies', 'pussy', 'pussylicking', 'pussys ', 'pusy', 'puto', 'queaf', 'queef', 'queerbait', 'queerhole', 'quim', 'raghead', 'raging boner', 'rape', 'raping', 'rapist', 'rectum', 'renob', 'retard', 'cowgirl', 'rimjaw', 'rimjob', 'rimming', 'ruski', 's&m', 'sadism', 'sadist', 'santorum', 'scat', 'schlong', 'scissoring', 'screwing', 'scroat', 'scrote', 'scrotum', 'semen', 'sex', 'sexo', 'sex', 'sh!+', 'sh!t', 'sh1t', 'shag', 'shagger', 'shaggin', 'shagging', 'shemale', 'shi+', 'shibari', 'shit-ass', 'shit-bag', 'shit-bagger', 'shit-brain', 'shit-breath', 'shit-cunt', 'shit-dick', 'shit-eating', 'shit-face', 'shit-faced', 'shit-fit', 'shit-head', 'shit-heel', 'shit-hole', 'shit-house', 'shit-load', 'shit-pot', 'shit-spitter', 'shit-stain', 'shitass', 'shitbag', 'shitbagger', 'shitblimp', 'shitbrain', 'shitbreath', 'shitcunt', 'shitdick', 'shite', 'shiteating', 'shited', 'shitey', 'shitface', 'shitfaced', 'shitfit', 'shitfuck', 'shitfull', 'shithead', 'shitheel', 'shithole', 'shithouse', 'shiting', 'shitings', 'shitload', 'shitpot', 'shits', 'shitspitter', 'shitstain', 'shitted', 'shitter', 'shitters ', 'shittiest', 'shitting', 'shittings', 'shitty', 'shitty ', 'shity', 'shiz', 'shiznit', 'shota', 'shrimping', 'skank', 'skeet', 'slanteye', 'slut', 'slutbag', 'sluts', 'smeg', 'smegma', 'smut', 'snatch', 'snowballing', 'sodomize', 'sodomy', 'son-of-a-bitch', 'spac', 'spic', 'spick', 'splooge', 'splooge moose', 'spooge', 'spunk', 'strapon', 'strappado', 'stripclub', 'styledoggy', 'suck', 'suicide', 'sultry', 'swastika', 'swinger', 't1tt1e5', 't1tties', 'tard', 'taste my', 'tea bagging', 'teets', 'teez', 'testical', 'testicle', 'threesome', 'throating', 'thundercunt', 'tit', 'titfuck', 'tits', 'titt', 'tittie5', 'tittiefucker', 'titties', 'titty', 'tittyfuck', 'tittywank', 'titwank', 'topless', 'tosser', 'towelhead', 'tranny', 'tribadism', 'tubgirl', 'turd', 'tushy', 'tw4t', 'twat', 'twathead', 'twatlips', 'twatty', 'twink', 'twinkie', 'twunt', 'twunter', 'undressing', 'upskirt', 'urethra play', 'urophilia', 'v14gra', 'v1gra', 'va-j-j', 'vag', 'vagina', 'venus mound', 'viagra', 'vibrator', 'violet wand', 'vjayjay', 'vorarephilia', 'voyeur', 'vulva', 'w00se', 'wang', 'wank', 'wanker', 'wanky', 'wet dream', 'wetback', 'white power', 'whoar', 'whore', 'willies', 'willy', 'wrapping men', 'wrinkled starfish', 'xrated', 'xx', 'xxx', 'yaoi', 'yellow showers', 'yiffy', 'zoophilia', '🖕', 'fuck', 'brazzer', 'naughtyamerica', 'pornhub',
@@ -143,6 +163,8 @@ const NewSound = (props) => {
                 if (response.status === 201) {
                     toast.success(response.data.message);
                     props.newSoundSubmit();
+                    // Reset form
+                    resetForm();
                 } else {
                     toast.error(response.data?.message || 'Failed to upload sound');
                     setSubmitted(false);
@@ -174,7 +196,10 @@ const NewSound = (props) => {
                 <div className="flex flex-col relative gap-4 h-min">
                     <div className="flex rounded-t-lg items-center justify-between px-6 py-3 bg-[#F9F7F7]">
                         <h1 className="text-2xl font-semibold">Add New Sound</h1>
-                        <svg onClick={props.hideModal} className="hover:rotate-90 cursor-pointer duration-150" xmlns="http://www.w3.org/2000/svg" height="28px" viewBox="0 -960 960 960" width="28px" fill=""><path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z" /></svg>
+                        <svg onClick={() => {
+                            resetForm();
+                            props.hideModal();
+                        }} className="hover:rotate-90 cursor-pointer duration-150" xmlns="http://www.w3.org/2000/svg" height="28px" viewBox="0 -960 960 960" width="28px" fill=""><path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z" /></svg>
                     </div>
 
                     <div className="p-4 pb-4 pt-0">
@@ -208,6 +233,7 @@ const NewSound = (props) => {
                                 <div className="mb-4 col-span-2 w-full">
                                     <label htmlFor="soundFile" className="block text-gray-700 text-sm font-bold mb-2">Sound (.mp3 or .wav)</label>
                                     <input
+                                        ref={fileInputRef}
                                         className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"
                                         aria-describedby="file_input_help"
                                         type="file"
@@ -254,6 +280,7 @@ const NewSound = (props) => {
                                     required
                                     options={categoriesList}
                                     isMulti
+                                    value={categories}
                                     onChange={(selectedOptions) => {
                                         setCategories(selectedOptions || []);
                                     }}
@@ -288,6 +315,7 @@ const NewSound = (props) => {
                                     id="tags"
                                     options={tagsList}
                                     isMulti
+                                    value={tags}
                                     onChange={async (selectedOptions) => {
                                         const processedOptions = [];
                                         

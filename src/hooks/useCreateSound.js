@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { soundsAPI } from "@/lib/apiServices";
+import { adminAPI } from "@/lib/apiServices";
 import { toast } from "react-toastify";
 
 export function useCreateSound() {
@@ -30,7 +30,8 @@ export function useCreateSound() {
         formData.append('tagIds', tagIds.join(','));
       }
       
-      const response = await soundsAPI.createSound(formData);
+      // Use admin API endpoint which automatically includes admin authorization token
+      const response = await adminAPI.createSound(formData);
       return response.data || response;
     },
     onSuccess: () => {
