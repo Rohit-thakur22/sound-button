@@ -112,7 +112,7 @@ const VisitPage = ({ locale = "en", userId }) => {
       <main className="hidebar dark:bg-[#212D3D] w-full relative flex min-h-screen flex-col items-center">
         <NavbarHead locale={locale} />
         <div className="md:block hidden top-[60px] overflow-hidden max-h-[250px] bg-[#F2F3F5] absolute w-full">
-          <svg
+          {/* <svg
             className=""
             xmlns="http://www.w3.org/2000/svg"
             version="1.1"
@@ -843,11 +843,11 @@ const VisitPage = ({ locale = "en", userId }) => {
               d="m0 0h2l3 3 4 2h-11z"
               fill="#F3F4F6"
             />
-          </svg>
+          </svg> */}
         </div>
         <div className="bg-white md:mt-[100px] dark:bg-[#212D3D] w-full md:shadow-lg md:rounded-3xl md:max-w-[70%] lg:max-w-[50%] h-full md:border dark:border-[#212D3D] mx-auto mt-[60px] relative">
           <div className="text-center mb-6 mt-6">
-            <h2 className="text-4xl dark:text-white font-semibold">
+            <h2 className="text-4xl dark:text-white font-semibold capitalize">
               {sharedData ? sharedData.name : userData && userData.name}
             </h2>
             <p className="mt-2 text-gray-500 dark:text-gray-300">
