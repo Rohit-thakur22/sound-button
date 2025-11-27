@@ -13,6 +13,7 @@ import { useSearchParams } from "next/navigation";
 import { transformSoundsArray } from "../../lib/dataTransformers";
 import { RWebShare } from "react-web-share";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import FixedAds from "../adsbygoogle/FixedAds";
 import Ads from "../adsbygoogle/Ads";
 import MobileAd from "../adsbygoogle/MobileAd";
@@ -37,6 +38,7 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
   const [totalCount, setTotalCount] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [isLoadingSimilarSounds, setIsLoadingSimilarSounds] = useState(!!soundObj);
+  const [adding, setAdding] = useState(false);
 
   const isValidColor = (color) => CSS.supports("color", color);
 
@@ -61,6 +63,28 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
   const categoryRedirect = searchParams.get("direct");
 
   const id = slug;
+
+  // Check if user is logged in and initialize favourite status
+  useEffect(() => {
+    const authToken = localStorage.getItem('authToken');
+    if (authToken) {
+      setLogedIn(true);
+      
+      // Check if sound is already in favorites
+      if (id) {
+        try {
+          const cachedData = JSON.parse(localStorage.getItem('logged_in_user')) || {};
+          const favouriteSounds = cachedData.favourite_sounds || [];
+          const isFavorited = favouriteSounds.some(fav => fav.id === id);
+          setFavourited(isFavorited);
+        } catch (error) {
+          console.error('Error checking favorite status:', error);
+        }
+      }
+    } else {
+      setLogedIn(false);
+    }
+  }, [id, router]);
 
 
   async function handleShowMoreSounds() {
@@ -368,28 +392,62 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
 
   async function toggleFavourite() {
     if (logedIn) {
+      setAdding(true);
       try {
         const response = await soundsAPI.toggleFavorite(id);
 
-        if (response.data && response.data.success) {
-          // Update the favorites count in the UI
-          setFavourited(response.data.action === 'added');
-
-          // Show appropriate message based on the action
-          if (response.data.action === 'added') {
-            toast.success('Added to favourites');
-          } else if (response.data.action === 'removed') {
-            toast.success('Removed from favourites');
+        if (response.status === 201) {
+          console.log('response', response.data.message);
+          
+          // Update the favorite status based on the response
+          // If action is 'added', set to true; if 'removed', set to false
+          if (response.data && response.data.action) {
+            setFavourited(response.data.action === 'added');
+          }
+          
+          toast.success(response.data.message || 'Favorite updated', {
+            position: 'bottom-left',
+          });
+          
+          // Update local storage to reflect the change
+          try {
+            const cachedData = JSON.parse(localStorage.getItem('logged_in_user')) || {};
+            let favouriteSounds = cachedData.favourite_sounds || [];
+            
+            if (response.data.action === 'added') {
+              // Add to favorites if not already there
+              const exists = favouriteSounds.some(fav => fav.id === id);
+              if (!exists && soundObj) {
+                favouriteSounds.push({
+                  id: id,
+                  ...soundObj
+                });
+              }
+            } else if (response.data.action === 'removed') {
+              // Remove from favorites
+              favouriteSounds = favouriteSounds.filter(fav => fav.id !== id);
+            }
+            
+            cachedData.favourite_sounds = favouriteSounds;
+            localStorage.setItem('logged_in_user', JSON.stringify(cachedData));
+          } catch (storageError) {
+            console.error('Error updating local storage:', storageError);
           }
         } else {
-          toast.error(response.data?.message || 'Failed to update favorites');
+          toast.error(response?.data?.message || response?.message || 'Failed to update favorites', {
+            position: 'bottom-left',
+          });
         }
       } catch (error) {
         console.error('Error toggling favorite:', error);
-        toast.error('Failed to update favorites');
+        toast.error('Failed to update favorites', {
+          position: 'bottom-left',
+        });
+      } finally {
+        setAdding(false);
       }
     } else {
-      router.push("/login");
+      router.push(`/${locale}/login`);
     }
   }
 
@@ -681,41 +739,129 @@ console.log('displayedSounds', displayedSounds);
                   soundObj.name +
                   " sound effect button, viral your soundboard sounds to be featured on world's leaderboard."}
               </div>
-             {soundObj?.author?.name && <p className="text-gray-600 dark:text-gray-300 text-sm">
-                Sound Uploaded by: {soundObj?.author?.name}
-              </p>}
+             {soundObj?.author?.name && (
+                <p className="text-gray-600 dark:text-gray-300 text-sm">
+                  Sound Uploaded by: {' '}
+                  {(soundObj?.author?.id || soundObj?.authorId || soundObj?.author) ? (
+                    <Link 
+                      href={`/${locale}/profile/visit/${soundObj?.author?.id || soundObj?.authorId || soundObj?.author}`}
+                      className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline cursor-pointer transition-colors"
+                    >
+                      {soundObj?.author?.name}
+                    </Link>
+                  ) : (
+                    <span>{soundObj?.author?.name}</span>
+                  )}
+                </p>
+              )}
               <div className="grid w-full gap-5 grid-cols-1 items-center lg:grid-cols-2">
                 {favourited ? (
                   <button
                     onClick={() => toggleFavourite()}
-                    className="bg-[#5aa9cd] text-white rounded flex mx-auto max-w-[400px] items-center gap-3 w-full justify-center py-2.5"
+                    disabled={adding}
+                    className="bg-[#5aa9cd] text-white rounded flex mx-auto max-w-[400px] items-center gap-3 w-full justify-center py-2.5 disabled:opacity-70"
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className={animate ? "pop-animation" : ""}
-                      height="24px"
-                      viewBox="0 -960 960 960"
-                      width="24px"
-                      fill="#E82850"
-                    >
-                      <path d="m480-120-58-52q-101-91-167-157T150-447.5Q111-500 95.5-544T80-634q0-94 63-157t157-63q52 0 99 22t81 62q34-40 81-62t99-22q94 0 157 63t63 157q0 46-15.5 90T810-447.5Q771-395 705-329T538-172l-58 52Z" />
-                    </svg>
+                    {adding ? (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        xmlnsXlink="http://www.w3.org/1999/xlink"
+                        viewBox="0 0 100 100"
+                        preserveAspectRatio="xMidYMid"
+                        width="24"
+                        height="24"
+                        style={{
+                          shapeRendering: 'auto',
+                          display: 'block',
+                          background: 'transparent',
+                        }}
+                      >
+                        <g>
+                          <circle
+                            strokeDasharray="164.93361431346415 56.97787143782138"
+                            r="35"
+                            strokeWidth="10"
+                            stroke="#fff"
+                            fill="none"
+                            cy="50"
+                            cx="50"
+                          >
+                            <animateTransform
+                              keyTimes="0;1"
+                              values="0 50 50;360 50 50"
+                              dur="1s"
+                              repeatCount="indefinite"
+                              type="rotate"
+                              attributeName="transform"
+                            />
+                          </circle>
+                        </g>
+                      </svg>
+                    ) : (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className={animate ? "pop-animation" : ""}
+                        height="24px"
+                        viewBox="0 -960 960 960"
+                        width="24px"
+                        fill="#E82850"
+                      >
+                        <path d="m480-120-58-52q-101-91-167-157T150-447.5Q111-500 95.5-544T80-634q0-94 63-157t157-63q52 0 99 22t81 62q34-40 81-62t99-22q94 0 157 63t63 157q0 46-15.5 90T810-447.5Q771-395 705-329T538-172l-58 52Z" />
+                      </svg>
+                    )}
                     {t("removefromfavourites")}
                   </button>
                 ) : (
                   <button
                     onClick={() => toggleFavourite()}
-                    className="bg-[#5aa9cd] text-white rounded flex mx-auto max-w-[400px] items-center gap-3 w-full justify-center py-2.5"
+                    disabled={adding}
+                    className="bg-[#5aa9cd] text-white rounded flex mx-auto max-w-[400px] items-center gap-3 w-full justify-center py-2.5 disabled:opacity-70"
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      height="24px"
-                      viewBox="0 -960 960 960"
-                      width="24px"
-                      fill="#e8eaed"
-                    >
-                      <path d="m480-120-58-52q-101-91-167-157T150-447.5Q111-500 95.5-544T80-634q0-94 63-157t157-63q52 0 99 22t81 62q34-40 81-62t99-22q94 0 157 63t63 157q0 46-15.5 90T810-447.5Q771-395 705-329T538-172l-58 52Z" />
-                    </svg>
+                    {adding ? (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        xmlnsXlink="http://www.w3.org/1999/xlink"
+                        viewBox="0 0 100 100"
+                        preserveAspectRatio="xMidYMid"
+                        width="24"
+                        height="24"
+                        style={{
+                          shapeRendering: 'auto',
+                          display: 'block',
+                          background: 'transparent',
+                        }}
+                      >
+                        <g>
+                          <circle
+                            strokeDasharray="164.93361431346415 56.97787143782138"
+                            r="35"
+                            strokeWidth="10"
+                            stroke="#fff"
+                            fill="none"
+                            cy="50"
+                            cx="50"
+                          >
+                            <animateTransform
+                              keyTimes="0;1"
+                              values="0 50 50;360 50 50"
+                              dur="1s"
+                              repeatCount="indefinite"
+                              type="rotate"
+                              attributeName="transform"
+                            />
+                          </circle>
+                        </g>
+                      </svg>
+                    ) : (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        height="24px"
+                        viewBox="0 -960 960 960"
+                        width="24px"
+                        fill="#e8eaed"
+                      >
+                        <path d="m480-120-58-52q-101-91-167-157T150-447.5Q111-500 95.5-544T80-634q0-94 63-157t157-63q52 0 99 22t81 62q34-40 81-62t99-22q94 0 157 63t63 157q0 46-15.5 90T810-447.5Q771-395 705-329T538-172l-58 52Z" />
+                      </svg>
+                    )}
                     {t("addtofavourites")}
                   </button>
                 )}

@@ -14,7 +14,9 @@ import { Navbar, MegaMenu, Sidebar, Dropdown } from "flowbite-react";
 import { RxHamburgerMenu } from "react-icons/rx";
 
 export function NavbarHead({ locale = 'en', active = 'home', theme: propTheme, setTheme: propSetTheme }) {
-  const { theme, toggleTheme } = useContext(ThemeContext);
+  const themeContext = useContext(ThemeContext);
+  const theme = themeContext?.theme || 'light';
+  const toggleTheme = themeContext?.toggleTheme || (() => {});
   const [visible, setVisible] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [showMobileNav, setShowMobileNav] = useState(false);

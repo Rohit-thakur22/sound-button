@@ -2,7 +2,7 @@
 import { useCategories } from '@/hooks/useCategories';
 import { useTags } from '@/hooks/useTags';
 import { useCreateSound } from '@/hooks/useCreateSound';
-import { createTag } from '../../database/createTag';
+import { adminAPI } from '@/lib/apiServices';
 import { useState, useRef } from 'react';
 import Select from 'react-select';
 import CreatableSelect from 'react-select/creatable';
@@ -10,12 +10,14 @@ import { toast } from 'react-toastify';
 import { ToastContainer } from 'react-toastify';
 import { checkIfFilesExist } from '../../database/checkIfFileExists';
 import Swal from 'sweetalert2';
+import { useQueryClient } from '@tanstack/react-query';
 
 const AdminNewSound = (props) => {
     // React Query hooks
     const { data: categoriesData } = useCategories();
     const { data: tagsData } = useTags();
     const createSoundMutation = useCreateSound();
+    const queryClient = useQueryClient();
 
     // Get categories and tags lists
     const categoriesList = categoriesData?.categories || [];
@@ -262,23 +264,45 @@ const AdminNewSound = (props) => {
                                     options={tagsList}
                                     isMulti
                                     value={tags}
-                                    onChange={(selectedOptions) => {
+                                    onChange={async (selectedOptions) => {
                                         // Handle new tag creation
-                                        selectedOptions?.forEach(option => {
+                                        const newTags = [];
+                                        const existingTags = [];
+                                        
+                                        for (const option of selectedOptions || []) {
                                             if (option.__isNew__) {
-                                                createTag(option.label);
+                                                // Create new tag via API
+                                                try {
+                                                    const response = await adminAPI.createTag({ name: option.label });
+                                                    const createdTag = response.data;
+                                                    
+                                                    // Format the created tag to match the expected structure
+                                                    const tagObj = {
+                                                        label: createdTag.name || option.label,
+                                                        value: createdTag.id || createdTag._id || option.label,
+                                                        id: createdTag.id || createdTag._id,
+                                                    };
+                                                    newTags.push(tagObj);
+                                                    
+                                                    // Invalidate tags query to refresh the list
+                                                    queryClient.invalidateQueries({ queryKey: ["tags"] });
+                                                    
+                                                    toast.success(`Tag "${option.label}" created successfully`);
+                                                } catch (error) {
+                                                    console.error('Error creating tag:', error);
+                                                    const errorMessage = error?.response?.data?.message || error?.message || 'Failed to create tag';
+                                                    toast.error(errorMessage);
+                                                    // Still add it as a temporary object so user doesn't lose their input
+                                                    newTags.push({ label: option.label, value: option.label });
+                                                }
+                                            } else {
+                                                // Use existing tag
+                                                existingTags.push(option);
                                             }
-                                        });
-                                        // Map to format with IDs
-                                        const values = selectedOptions ? selectedOptions.map(option => {
-                                            // If it's a new tag, create a temporary object
-                                            if (option.__isNew__) {
-                                                return { label: option.label, value: option.label };
-                                            }
-                                            // Otherwise use the existing tag object
-                                            return option;
-                                        }) : [];
-                                        setTags(values);
+                                        }
+                                        
+                                        // Combine new and existing tags
+                                        setTags([...existingTags, ...newTags]);
                                     }}
                                 />
                             </div>

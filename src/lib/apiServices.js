@@ -215,6 +215,25 @@ export const adminAPI = {
     
     return api.post('/sounds', formData, config);
   },
+
+  // Create tag (admin endpoint)
+  createTag: (tagData) => {
+    // Get admin token manually since endpoint doesn't include /admin/
+    const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminAuthToken') : null;
+    
+    const config = {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    };
+    
+    // Manually add admin authorization token
+    if (adminToken) {
+      config.headers.Authorization = `Bearer ${adminToken}`;
+    }
+    
+    return api.post('/sounds/add/tag', tagData, config);
+  },
 };
 
 // Export all API services
