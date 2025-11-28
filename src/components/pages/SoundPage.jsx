@@ -20,6 +20,7 @@ import MobileAd from "../adsbygoogle/MobileAd";
 import { LoadingInline } from "@/components/loading/Loading";
 
 export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
+  console.log('soundObj', soundObj);
   const { t } = useTranslation();
   const audioRef = useRef(null);
   const router = useRouter();
@@ -34,11 +35,14 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
   const [similarSounds, setSimilarSounds] = useState();
   const [currentlyPlayingSound, setCurrentlyPlayingSound] = useState(null);
   const [logedIn, setLogedIn] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(null);
   const [currentLimit, setCurrentLimit] = useState(40);
   const [totalCount, setTotalCount] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [isLoadingSimilarSounds, setIsLoadingSimilarSounds] = useState(!!soundObj);
   const [adding, setAdding] = useState(false);
+  const [currentSoundObj, setCurrentSoundObj] = useState(soundObj);
+  const [isToggling, setIsToggling] = useState(false); // Track if we're in the middle of a toggle
 
   const isValidColor = (color) => CSS.supports("color", color);
 
@@ -70,21 +74,64 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
     if (authToken) {
       setLogedIn(true);
       
-      // Check if sound is already in favorites
-      if (id) {
+      // Get current user ID
+      try {
+        const loggedInUser = localStorage.getItem('logged_in_user');
+        if (loggedInUser) {
+          const userData = JSON.parse(loggedInUser);
+          const user = userData.user || userData;
+          const userId = user.id || user.uid || user._id || null;
+          setCurrentUserId(userId);
+        }
+      } catch (error) {
+        console.error('Error getting current user ID:', error);
+      }
+    } else {
+      setLogedIn(false);
+      setCurrentUserId(null);
+    }
+  }, [router]);
+
+  // Initialize favorite status from favBy array (source of truth from API)
+  // Only sync from API when not toggling
+  useEffect(() => {
+    if (isToggling) {
+      // Don't sync during toggle - let the toggle function handle state
+      return;
+    }
+    
+    if (id && currentSoundObj && currentUserId) {
+      const favBy = currentSoundObj.favBy || [];
+      const isFavoritedByArray = Array.isArray(favBy) && 
+        favBy.some(favId => String(favId) === String(currentUserId));
+      
+      if (isFavoritedByArray) {
+        setFavourited(true);
+      } else {
+        // Fallback to localStorage check
         try {
           const cachedData = JSON.parse(localStorage.getItem('logged_in_user')) || {};
           const favouriteSounds = cachedData.favourite_sounds || [];
           const isFavorited = favouriteSounds.some(fav => fav.id === id);
           setFavourited(isFavorited);
         } catch (error) {
-          console.error('Error checking favorite status:', error);
+          setFavourited(false);
         }
       }
+    } else if (id && currentUserId) {
+      // Fallback to localStorage check if soundObj not available
+      try {
+        const cachedData = JSON.parse(localStorage.getItem('logged_in_user')) || {};
+        const favouriteSounds = cachedData.favourite_sounds || [];
+        const isFavorited = favouriteSounds.some(fav => fav.id === id);
+        setFavourited(isFavorited);
+      } catch (error) {
+        setFavourited(false);
+      }
     } else {
-      setLogedIn(false);
+      setFavourited(false);
     }
-  }, [id, router]);
+  }, [id, currentSoundObj, currentUserId]);
 
 
   async function handleShowMoreSounds() {
@@ -102,16 +149,16 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
 
       let response;
 
-      if (soundObj && soundObj.categories && soundObj.categories.length > 0) {
-        const categoryName = soundObj.categories[0].name;
+      if (currentSoundObj && currentSoundObj.categories && currentSoundObj.categories.length > 0) {
+        const categoryName = currentSoundObj.categories[0].name;
         response = await soundsAPI.getSoundsByCategory(categoryName, {
           search: "",
           page: 1,
           limit: newLimit
         });
-      } else if (soundObj.name) {
+      } else if (currentSoundObj?.name) {
         response = await soundsAPI.getAllSounds({
-          search: soundObj.name,
+          search: currentSoundObj.name,
           page: 1,
           limit: newLimit
         });
@@ -155,10 +202,10 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
 
   async function getherSimilarSounds() {
     setIsLoadingSimilarSounds(true);
-    if (soundObj && soundObj.categories && soundObj.categories.length > 0) {
+    if (currentSoundObj && currentSoundObj.categories && currentSoundObj.categories.length > 0) {
       try {
         // Get the first category from the sound object
-        const categoryName = soundObj.categories[0].name;
+        const categoryName = currentSoundObj.categories[0].name;
         const response = await soundsAPI.getSoundsByCategory(categoryName, {
           search: "",
           page: 1,
@@ -172,20 +219,20 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
         setTotalCount(response.data?.total || 0);
 
         // Filter out the current sound from similar sounds
-        const filteredSounds = sounds.filter(sound => sound.id !== soundObj.id);
+        const filteredSounds = sounds.filter(sound => sound.id !== currentSoundObj.id);
         setSimilarSounds(filteredSounds);
       } catch (error) {
         console.error('Error loading similar sounds by category:', error);
         // Fallback to search by name if category fetch fails
-        if (soundObj.name) {
+        if (currentSoundObj?.name) {
           try {
             const response = await soundsAPI.getAllSounds({
-              search: soundObj.name,
+              search: currentSoundObj.name,
               page: 1,
               limit: 40
             });
             const sounds = transformSoundsArray(response.data || []);
-            const filteredSounds = sounds.filter(sound => sound.id !== soundObj.id);
+            const filteredSounds = sounds.filter(sound => sound.id !== currentSoundObj.id);
             setSimilarSounds(filteredSounds);
           } catch (searchError) {
             console.error('Error loading similar sounds by name:', searchError);
@@ -197,16 +244,16 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
       } finally {
         setIsLoadingSimilarSounds(false);
       }
-    } else if (soundObj.name) {
+    } else if (currentSoundObj?.name) {
       // Fallback to search by name if no categories
       try {
         const response = await soundsAPI.getAllSounds({
-          search: soundObj.name,
+          search: currentSoundObj.name,
           page: 1,
           limit: 40
         });
         const sounds = transformSoundsArray(response.data || []);
-        const filteredSounds = sounds.filter(sound => sound.id !== soundObj.id);
+        const filteredSounds = sounds.filter(sound => sound.id !== currentSoundObj.id);
         setSimilarSounds(filteredSounds);
       } catch (error) {
         console.error('Error loading similar sounds by name:', error);
@@ -225,6 +272,7 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
 
   useEffect(() => {
     if (soundObj) {
+      setCurrentSoundObj(soundObj);
       getherSimilarSounds();
     } else {
       setIsLoadingSimilarSounds(false);
@@ -239,7 +287,7 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
       setIsPlaying(false);
       setIsLoading(false);
     } else {
-      const audioUrl = soundObj?.url;
+      const audioUrl = currentSoundObj?.url;
       if (!audioUrl) {
         console.error('No audio URL provided');
         return;
@@ -308,7 +356,7 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
   }, []);
 
   const downloadSound = async () => {
-    const audioUrl = soundObj?.url;
+    const audioUrl = currentSoundObj?.url;
     if (!audioUrl) {
       console.error('No audio URL provided for download');
       toast.error('No audio URL available for download');
@@ -334,7 +382,7 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
       const blobUrl = URL.createObjectURL(blob);
       const downloadLink = document.createElement('a');
       downloadLink.href = blobUrl;
-      const fileName = soundObj.name && soundObj.name.includes('.mp3') ? soundObj.name : `${soundObj.name || 'sound'}.mp3`;
+      const fileName = currentSoundObj?.name && currentSoundObj.name.includes('.mp3') ? currentSoundObj.name : `${currentSoundObj?.name || 'sound'}.mp3`;
       downloadLink.download = fileName;
       downloadLink.style.display = 'none';
       document.body.appendChild(downloadLink);
@@ -362,7 +410,7 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
       try {
         const downloadLink = document.createElement('a');
         downloadLink.href = audioUrl;
-        downloadLink.download = soundObj.name && soundObj.name.includes('.mp3') ? soundObj.name : `${soundObj.name || 'sound'}.mp3`;
+        downloadLink.download = currentSoundObj?.name && currentSoundObj.name.includes('.mp3') ? currentSoundObj.name : `${currentSoundObj?.name || 'sound'}.mp3`;
         downloadLink.target = '_blank';
         downloadLink.rel = 'noopener noreferrer';
         downloadLink.style.display = 'none';
@@ -393,19 +441,53 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
   async function toggleFavourite() {
     if (logedIn) {
       setAdding(true);
+      setIsToggling(true);
+      // Optimistic update - update UI immediately
+      const previousFavoritedState = favourited;
+      const newFavoritedState = !favourited;
+      setFavourited(newFavoritedState);
+      
       try {
         const response = await soundsAPI.toggleFavorite(id);
 
-        if (response.status === 201) {
-          console.log('response', response.data.message);
+        if (response.status === 201 || response.status === 200) {
+          console.log('Toggle favorite response:', response.data);
           
-          // Update the favorite status based on the response
-          // If action is 'added', set to true; if 'removed', set to false
-          if (response.data && response.data.action) {
-            setFavourited(response.data.action === 'added');
+          // Update local state based on API response
+          if (response.data) {
+            // Check for action field
+            if (response.data.action === 'added') {
+              setFavourited(true);
+            } else if (response.data.action === 'removed') {
+              setFavourited(false);
+            } else {
+              // If no action field, check message or use optimistic update
+              const message = response.data.message || '';
+              if (message.toLowerCase().includes('added') || message.toLowerCase().includes('add')) {
+                setFavourited(true);
+              } else if (message.toLowerCase().includes('removed') || message.toLowerCase().includes('remove')) {
+                setFavourited(false);
+              } else {
+                // Keep optimistic update if we can't determine
+                setFavourited(newFavoritedState);
+              }
+            }
+          } else {
+            // If no data, keep the optimistic update
+            setFavourited(newFavoritedState);
           }
           
-          toast.success(response.data.message || 'Favorite updated', {
+          // Refresh sound data to get updated favBy array
+          try {
+            const soundResponse = await soundsAPI.getSoundById(id);
+            if (soundResponse.data) {
+              setCurrentSoundObj(soundResponse.data);
+            }
+          } catch (refreshError) {
+            console.error('Error refreshing sound data:', refreshError);
+          }
+          
+          toast.success(response.data?.message || 'Favorite updated', {
             position: 'bottom-left',
           });
           
@@ -414,16 +496,16 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
             const cachedData = JSON.parse(localStorage.getItem('logged_in_user')) || {};
             let favouriteSounds = cachedData.favourite_sounds || [];
             
-            if (response.data.action === 'added') {
+            if (response.data?.action === 'added') {
               // Add to favorites if not already there
               const exists = favouriteSounds.some(fav => fav.id === id);
-              if (!exists && soundObj) {
+              if (!exists && currentSoundObj) {
                 favouriteSounds.push({
                   id: id,
-                  ...soundObj
+                  ...currentSoundObj
                 });
               }
-            } else if (response.data.action === 'removed') {
+            } else if (response.data?.action === 'removed') {
               // Remove from favorites
               favouriteSounds = favouriteSounds.filter(fav => fav.id !== id);
             }
@@ -434,17 +516,25 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
             console.error('Error updating local storage:', storageError);
           }
         } else {
+          // Revert optimistic update on failure
+          setFavourited(previousFavoritedState);
           toast.error(response?.data?.message || response?.message || 'Failed to update favorites', {
             position: 'bottom-left',
           });
         }
       } catch (error) {
+        // Revert optimistic update on error
+        setFavourited(previousFavoritedState);
         console.error('Error toggling favorite:', error);
         toast.error('Failed to update favorites', {
           position: 'bottom-left',
         });
       } finally {
         setAdding(false);
+        // Keep isToggling true for a bit longer to prevent useEffect from overwriting
+        setTimeout(() => {
+          setIsToggling(false);
+        }, 2000);
       }
     } else {
       router.push(`/${locale}/login`);
@@ -456,7 +546,7 @@ export default function Sound({ slug, frameUrl, soundObj, locale = 'en' }) {
   }
 
   function copyShareUrl() {
-    const shareUrl = soundObj.url;
+    const shareUrl = currentSoundObj?.url;
     navigator.clipboard.writeText(shareUrl);
     toast.success('Audio URL copied to clipboard!');
   }
@@ -527,29 +617,29 @@ console.log('displayedSounds', displayedSounds);
         </svg>
 
         <div className="flex flex-col items-center w-full">
-          <Breadcrumb
+            <Breadcrumb
             first={t("home")}
-            second={soundObj?.categories?.[0]?.name || categoryName}
+            second={currentSoundObj?.categories?.[0]?.name || categoryName}
             secondLink={categoryRedirect}
-            third={soundObj && soundObj.name}
+            third={currentSoundObj && currentSoundObj.name}
             locale={locale}
           />
           <div className=" md:w-[75%] w-full grid grid-cols-1 sm:grid-cols-2 items-center justify-center gap-6 py-18 mt-10 px-5">
             <div className="flex flex-col ">
               <div
                 style={{
-                  backgroundColor: soundObj.color && isValidColor(soundObj.color) ? soundObj.color : undefined,
+                  backgroundColor: currentSoundObj?.color && isValidColor(currentSoundObj.color) ? currentSoundObj.color : undefined,
                 }}
                 data-aos="fade-in"
-                className={`pb-4 gap-5 flex flex-col items-center justify-between p-5 mx-auto min-w-[250px] max-w-[350px] rounded-md ${soundObj.color && isValidColor(soundObj.color) ? `bg-[${soundObj.color}]` : 'bg-[#0E7490]'}`}
+                className={`pb-4 gap-5 flex flex-col items-center justify-between p-5 mx-auto min-w-[250px] max-w-[350px] rounded-md ${currentSoundObj?.color && isValidColor(currentSoundObj.color) ? `bg-[${currentSoundObj.color}]` : 'bg-[#0E7490]'}`}
               >
                 <div className="flex flex-col gap-2">
                   <h1 className="text-center text-2xl text-[#E7E7EA] font-semibold">
-                    {soundObj && soundObj.name}
+                    {currentSoundObj && currentSoundObj.name}
                   </h1>
                   <h6 className="text-center text-sm mb-3 text-[#E7E7EA] font-semibold">
                     {t("downloads")}:{" "}
-                    {soundObj && soundObj.downloads}
+                    {currentSoundObj && currentSoundObj.downloads}
                   </h6>
                   {isPlaying ? (
                     <div className="flex flex-row gap-1 items-center justify-center">
@@ -657,13 +747,13 @@ console.log('displayedSounds', displayedSounds);
                   preload="none"
                   onError={(e) => {
                     console.error('Audio load error:', e);
-                    console.error('Failed URL:', soundObj?.url);
+                    console.error('Failed URL:', currentSoundObj?.url);
                     setIsPlaying(false);
                     setIsLoading(false);
                   }}
                 ></audio>
                 <button
-                  style={{ color: soundObj && soundObj.color }}
+                  style={{ color: currentSoundObj && currentSoundObj.color }}
                   onClick={handlePlayPause}
                   disabled={isLoading}
                   className="bg-white font-semibold rounded my-2 mt-5 mx-auto max-w-[400px] flex items-center gap-3 w-full justify-center py-2.5 disabled:opacity-70"
@@ -675,7 +765,7 @@ console.log('displayedSounds', displayedSounds);
                           className="absolute inset-0 rounded-full border-2 border-current border-t-transparent smooth-spinner"
                           style={{
                             willChange: 'transform',
-                            color: soundObj && soundObj.color
+                            color: currentSoundObj && currentSoundObj.color
                           }}
                         ></div>
                       </div>
@@ -687,7 +777,7 @@ console.log('displayedSounds', displayedSounds);
                         className="w-6 h-6"
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 -960 960 960"
-                        fill={soundObj && soundObj.color}
+                        fill={currentSoundObj && currentSoundObj.color}
                       >
                         <path d="M564-284v-392h139.5v392H564Zm-307 0v-392h139.5v392H257Z" />
                       </svg>
@@ -698,7 +788,7 @@ console.log('displayedSounds', displayedSounds);
                       <svg
                         className="w-5 h-5"
                         xmlns="http://www.w3.org/2000/svg"
-                        fill={soundObj && soundObj.color}
+                        fill={currentSoundObj && currentSoundObj.color}
                         viewBox="0 0 384 512"
                       >
                         <path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z" />
@@ -710,8 +800,8 @@ console.log('displayedSounds', displayedSounds);
               </div>
 
               <div className="flex flex-wrap gap-2 mt-5 mx-auto max-w-[650px]">
-                {soundObj && soundObj.tags?.length > 0 &&
-                  soundObj.tags?.map((tag, index) => (
+                {currentSoundObj && currentSoundObj.tags?.length > 0 &&
+                  currentSoundObj.tags?.map((tag, index) => (
                     <div
                       key={index}
                       onClick={() => {
@@ -734,23 +824,23 @@ console.log('displayedSounds', displayedSounds);
                   {t("sound_description")}:
                 </span>
                 &nbsp;&nbsp;{" "}
-                {(soundObj && soundObj.description) ||
+                {(currentSoundObj && currentSoundObj.description) ||
                   "Download, play and share free " +
-                  soundObj.name +
-                  " sound effect button, viral your soundboard sounds to be featured on world's leaderboard."}
+                  (currentSoundObj?.name || '') +
+                  " sound effect button, viral your soundboard sounds to be featured on world's leaderboard."}
               </div>
-             {soundObj?.author?.name && (
+             {currentSoundObj?.author?.name && (
                 <p className="text-gray-600 dark:text-gray-300 text-sm">
                   Sound Uploaded by: {' '}
-                  {(soundObj?.author?.id || soundObj?.authorId || soundObj?.author) ? (
+                  {(currentSoundObj?.author?.id || currentSoundObj?.authorId || currentSoundObj?.author) ? (
                     <Link 
-                      href={`/${locale}/profile/visit/${soundObj?.author?.id || soundObj?.authorId || soundObj?.author}`}
+                      href={`/${locale}/profile/visit/${currentSoundObj?.author?.id || currentSoundObj?.authorId || currentSoundObj?.author}`}
                       className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline cursor-pointer transition-colors"
                     >
-                      {soundObj?.author?.name}
+                      {currentSoundObj?.author?.name}
                     </Link>
                   ) : (
-                    <span>{soundObj?.author?.name}</span>
+                    <span>{currentSoundObj?.author?.name}</span>
                   )}
                 </p>
               )}
@@ -899,9 +989,9 @@ console.log('displayedSounds', displayedSounds);
                 </button>
                 <RWebShare
                   data={{
-                    text: `Download and Share ${soundObj.name} sound effect button`,
+                    text: `Download and Share ${currentSoundObj?.name || ''} sound effect button`,
                     title: "Sound Effect Buttons",
-                    url: soundObj.url,
+                    url: currentSoundObj?.url || '',
                   }}
                 >
                   <button className="bg-[#159642c1] text-white rounded flex mx-auto max-w-[400px] items-center gap-3 w-full justify-center py-2.5">
@@ -933,7 +1023,7 @@ console.log('displayedSounds', displayedSounds);
                   Copy Audio URL
                 </button>
                 <a
-                  href={`mailto:richdreamcreators@gmail.com?subject=Sound%20button%20report&body=Sound%20name:%20${soundObj.name},%0A%0APlease%20describe%20your%20issue%20with%20this%20sound%20button%0A%0AThank%20you!`}
+                  href={`mailto:richdreamcreators@gmail.com?subject=Sound%20button%20report&body=Sound%20name:%20${currentSoundObj?.name || ''},%0A%0APlease%20describe%20your%20issue%20with%20this%20sound%20button%0A%0AThank%20you!`}
                 >
                   <button className="bg-[#d0a91bcb] text-white rounded flex mx-auto max-w-[400px] items-center gap-3 w-full justify-center py-2.5">
                     <svg
@@ -1001,7 +1091,8 @@ console.log('displayedSounds', displayedSounds);
                   description={sound.description}
                   favorites={sound.favorites}
                   downloads={sound.downloads}
-                  category={soundObj?.categories?.[0]?.name || categoryName}
+                  favBy={sound.favBy}
+                  category={currentSoundObj?.categories?.[0]?.name || categoryName}
                   categoryUrl={categoryRedirect}
                   isPlaying={currentlyPlayingSound === sound.id}
                   handlePlaySound={handlePlaySound}

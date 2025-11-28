@@ -18,6 +18,7 @@ const Favourites = (props) => {
                         description={sound.description}
                         favorites={sound.favorites}
                         downloads={sound.downloads}
+                        favBy={sound.favBy}
                         category={sound.category}
                         profileFav={true}
                         setRefreshKey={props.setRefreshKey}

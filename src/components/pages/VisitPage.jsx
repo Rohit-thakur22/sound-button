@@ -52,6 +52,7 @@ const VisitPage = ({ locale = "en", userId }) => {
         color: sound.color,
         favorites: sound.favorites,
         downloads: sound.downloads,
+        favBy: sound.favBy || [], // Array of user IDs who favorited this sound
         tags: [], // API doesn't provide tags in this response
         is_deleted: sound.isDeleted,
         created_at: sound.createdAt,
@@ -67,6 +68,7 @@ const VisitPage = ({ locale = "en", userId }) => {
         color: sound.color,
         favorites: sound.favorites,
         downloads: sound.downloads,
+        favBy: sound.favBy || [], // Array of user IDs who favorited this sound
         tags: [], // API doesn't provide tags in this response
         is_deleted: sound.isDeleted,
         created_at: sound.createdAt,
@@ -952,7 +954,7 @@ const VisitPage = ({ locale = "en", userId }) => {
                       <Soundbox
                         key={sound.id}
                         id={sound.id}
-                        visitShow={true}
+                        visitShow={false}
                         authorId={sound.author}
                         name={sound.name}
                         link={sound.link}
@@ -961,6 +963,7 @@ const VisitPage = ({ locale = "en", userId }) => {
                         description={sound.description}
                         favorites={sound.favorites}
                         downloads={sound.downloads}
+                        favBy={sound.favBy}
                         isPlaying={currentlyPlayingSound === sound.id}
                         handlePlaySound={handlePlaySound}
                         locale={locale}
@@ -981,7 +984,7 @@ const VisitPage = ({ locale = "en", userId }) => {
                       <Soundbox
                         key={sound.id}
                         id={sound.id}
-                        visitShow={true}
+                        visitShow={false}
                         authorId={sound.author}
                         name={sound.name}
                         link={sound.link}
@@ -990,6 +993,7 @@ const VisitPage = ({ locale = "en", userId }) => {
                         description={sound.description}
                         favorites={sound.favorites}
                         downloads={sound.downloads}
+                        favBy={sound.favBy}
                         isPlaying={currentlyPlayingSound === sound.id}
                         handlePlaySound={handlePlaySound}
                         locale={locale}

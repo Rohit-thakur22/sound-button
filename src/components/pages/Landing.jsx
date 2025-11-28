@@ -408,6 +408,7 @@ const Landing = ({
                     description={sound.description || ''}
                     favorites={sound.favorites || 0}
                     downloads={sound.downloads || 0}
+                    favBy={sound.favBy}
                     category={"Trending"}
                     categoryUrl={"trending"}
                     isPlaying={currentlyPlayingSound === sound.id}
@@ -603,6 +604,7 @@ const Landing = ({
                     description={sound.description || ''}
                     favorites={sound.favorites || 0}
                     downloads={sound.downloads || 0}
+                    favBy={sound.favBy}
                     category={"Trending"}
                     categoryUrl={"trending"}
                     isPlaying={currentlyPlayingSound === sound.id}
@@ -650,6 +652,7 @@ const Landing = ({
                     description={sound.description}
                     favorites={sound.favorites || 0}
                     downloads={sound.downloads || 0}
+                    favBy={sound.favBy}
                     category={" Funny Sound Effects"}
                     categoryUrl={"funny-sound-effects"}
                     isPlaying={currentlyPlayingSound === sound.id}
@@ -697,6 +700,7 @@ const Landing = ({
                     description={sound.description}
                     favorites={sound.favorites || 0}
                     downloads={sound.downloads || 0}
+                    favBy={sound.favBy}
                     category={"Discord Soundboard"}
                     categoryUrl={"discord-soundboard"}
                     isPlaying={currentlyPlayingSound === sound.id}
@@ -744,6 +748,7 @@ const Landing = ({
                     description={sound.description}
                     favorites={sound.favorites || 0}
                     downloads={sound.downloads || 0}
+                    favBy={sound.favBy}
                     category={"Free Sound Effects"}
                     categoryUrl={"free-sound-effects"}
                     isPlaying={currentlyPlayingSound === sound.id}
@@ -791,6 +796,7 @@ const Landing = ({
                     description={sound.description}
                     favorites={sound.favorites || 0}
                     downloads={sound.downloads || 0}
+                    favBy={sound.favBy}
                     category={"Horror Sound Effects"}
                     categoryUrl={"horror-sound-effects"}
                     isPlaying={currentlyPlayingSound === sound.id}
@@ -838,6 +844,7 @@ const Landing = ({
                     description={sound.description}
                     favorites={sound.favorites || 0}
                     downloads={sound.downloads || 0}
+                    favBy={sound.favBy}
                     category={"Animal Sound Effects"}
                     categoryUrl={"animal-sound-effects"}
                     isPlaying={currentlyPlayingSound === sound.id}
@@ -884,6 +891,7 @@ const Landing = ({
                     description={sound.description}
                     favorites={sound.favorites || 0}
                     downloads={sound.downloads || 0}
+                    favBy={sound.favBy}
                     category={"Meme Soundboard"}
                     categoryUrl={"meme-soundboard"}
                     isPlaying={currentlyPlayingSound === sound.id}
@@ -931,6 +939,7 @@ const Landing = ({
                     description={sound.description}
                     favorites={sound.favorites || 0}
                     downloads={sound.downloads || 0}
+                    favBy={sound.favBy}
                     category={"Prank Soundboard"}
                     categoryUrl={"prank_soundboard"}
                     isPlaying={currentlyPlayingSound === sound.id}
@@ -977,6 +986,8 @@ const Landing = ({
                     description={sound.description}
                     favorites={sound.favorites || 0}
                     downloads={sound.downloads || 0}
+                    favBy={sound.favBy}
+                    favBy={sound.favBy}
                     category={"Youtube Sound Effects"}
                     categoryUrl={"youtube-sound-effects"}
                     isPlaying={currentlyPlayingSound === sound.id}
@@ -1024,6 +1035,7 @@ const Landing = ({
                     description={sound.description}
                     favorites={sound.favorites || 0}
                     downloads={sound.downloads || 0}
+                    favBy={sound.favBy}
                     category={"Royalty Free Music"}
                     categoryUrl={"royalty-free-music"}
                     isPlaying={currentlyPlayingSound === sound.id}

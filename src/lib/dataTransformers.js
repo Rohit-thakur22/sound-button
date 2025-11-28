@@ -18,6 +18,7 @@ export const transformSoundData = (sound) => ({
   color: sound.color,
   favorites: sound.favorites,
   downloads: sound.downloads,
+  favBy: sound.favBy || [], // Array of user IDs who favorited this sound
   created_at: {
     seconds: Math.floor(new Date(sound.createdAt).getTime() / 1000)
   },

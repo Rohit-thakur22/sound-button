@@ -30,7 +30,8 @@ const Soundbox = React.memo(({
   visitShow,
   profileFav,
   showDelete = false,
-  handleRefresh
+  handleRefresh,
+  favBy = [] // Array of user IDs who favorited this sound
 }) => {
   const { t } = useTranslation()
   const audioRef = useRef(null);
@@ -44,38 +45,112 @@ const Soundbox = React.memo(({
   const [adding, setAdding] = useState(false);
   const [loggedIn, setLogedIn] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [isFavorited, setIsFavorited] = useState(false); // Local state for favorite status
+  const [isToggling, setIsToggling] = useState(false); // Track if we're in the middle of a toggle
   const isValidColor = (color) => CSS.supports("color", color);
 
   useEffect(() => {
     const authToken = localStorage.getItem('authToken');
     if (authToken) {
-      setLogedIn(true)
+      setLogedIn(true);
+      // Get current user ID from localStorage
+      try {
+        const loggedInUser = localStorage.getItem('logged_in_user');
+        if (loggedInUser) {
+          const userData = JSON.parse(loggedInUser);
+          const user = userData.user || userData;
+          setCurrentUserId(user.id || user.uid || user._id || null);
+        }
+      } catch (error) {
+        console.error('Error getting current user ID:', error);
+      }
     } else {
-      setLogedIn(false)
+      setLogedIn(false);
+      setCurrentUserId(null);
     }
   }, [router]);
+
+  // Initialize favorite status from favBy array (source of truth from API)
+  // Only sync from API when component mounts or favBy actually changes, not during toggle
+  useEffect(() => {
+    if (isToggling) {
+      // Don't sync during toggle - let the toggle function handle state
+      return;
+    }
+    
+    if (currentUserId && favBy && Array.isArray(favBy)) {
+      const isFavoritedByArray = favBy.some(favId => String(favId) === String(currentUserId));
+      setIsFavorited(isFavoritedByArray);
+    } else if (!currentUserId || !favBy || !Array.isArray(favBy)) {
+      setIsFavorited(false);
+    }
+  }, [currentUserId, favBy, id]);
+
+  // Check if current user has favorited this sound (for display)
+  // Use local state for immediate UI updates
+  const isFavoritedByCurrentUser = isFavorited;
 
   async function toggleFavourite() {
     if (loggedIn) {
       setAdding(true);
+      setIsToggling(true);
+      // Optimistic update - update UI immediately
+      const previousFavoritedState = isFavorited;
+      const newFavoritedState = !isFavorited;
+      setIsFavorited(newFavoritedState);
+      
       try {
         const response = await soundsAPI.toggleFavorite(id);
 
-
-        if (response.status === 201) {
-          console.log('response', response.data.message);
-          toast.success(response.data.message, {
+        if (response.status === 201 || response.status === 200) {
+          console.log('Toggle favorite response:', response.data);
+          
+          // Update local state based on API response
+          if (response.data) {
+            // Check for action field
+            if (response.data.action === 'added') {
+              setIsFavorited(true);
+            } else if (response.data.action === 'removed') {
+              setIsFavorited(false);
+            } else {
+              // If no action field, check message or use optimistic update
+              const message = response.data.message || '';
+              if (message.toLowerCase().includes('added') || message.toLowerCase().includes('add')) {
+                setIsFavorited(true);
+              } else if (message.toLowerCase().includes('removed') || message.toLowerCase().includes('remove')) {
+                setIsFavorited(false);
+              } else {
+                // Keep optimistic update if we can't determine
+                setIsFavorited(newFavoritedState);
+              }
+            }
+          } else {
+            // If no data, keep the optimistic update
+            setIsFavorited(newFavoritedState);
+          }
+          
+          toast.success(response.data?.message || 'Favorite updated', {
             position: 'bottom-left',
           });
           setRefreshKey && setRefreshKey(prevKey => prevKey + 1);
         } else {
-          toast.error(response?.message || 'Failed to update favorites');
+          // Revert optimistic update on failure
+          setIsFavorited(previousFavoritedState);
+          toast.error(response?.data?.message || response?.message || 'Failed to update favorites');
         }
       } catch (error) {
+        // Revert optimistic update on error
+        setIsFavorited(previousFavoritedState);
         console.error('Error toggling favorite:', error);
         toast.error('Failed to update favorites');
       } finally {
         setAdding(false);
+        // Keep isToggling true for a bit longer to prevent useEffect from overwriting
+        // The parent component should update favBy prop which will trigger sync
+        setTimeout(() => {
+          setIsToggling(false);
+        }, 2000);
       }
     } else {
       router.push(`/${locale}/login`);
@@ -443,7 +518,7 @@ const Soundbox = React.memo(({
           ) : !visitShow ? (
             <div>
               {
-                profileFav ?
+                profileFav || isFavoritedByCurrentUser ?
                   <div className='cursor-pointer'>
                     {
                       adding ?
@@ -522,7 +597,7 @@ const Soundbox = React.memo(({
                             </circle>
                           </g>
                         </svg> :
-                        <svg onClick={toggleFavourite} xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e8eaed"><path d="m480-120-58-52q-101-91-167-157T150-447.5Q111-500 95.5-544T80-634q0-94 63-157t157-63q52 0 99 22t81 62q34-40 81-62t99-22q94 0 157 63t63 157q0 46-15.5 90T810-447.5Q771-395 705-329T538-172l-58 52Z" /></svg>
+                        <svg onClick={toggleFavourite} xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill={isFavoritedByCurrentUser ? "#E82850" : "#e8eaed"}><path d="m480-120-58-52q-101-91-167-157T150-447.5Q111-500 95.5-544T80-634q0-94 63-157t157-63q52 0 99 22t81 62q34-40 81-62t99-22q94 0 157 63t63 157q0 46-15.5 90T810-447.5Q771-395 705-329T538-172l-58 52Z" /></svg>
                     }
                   </div>
               }</div>

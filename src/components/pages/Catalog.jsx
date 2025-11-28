@@ -241,6 +241,7 @@ const Catalog = ({
                 description={sound.description}
                 favorites={sound.favorites}
                 downloads={sound.downloads}
+                favBy={sound.favBy}
                 category={catAlias}
                 categoryUrl={catUrl}
                 isPlaying={currentlyPlayingSound === sound.id}
